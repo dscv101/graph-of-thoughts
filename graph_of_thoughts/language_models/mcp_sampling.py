@@ -6,16 +6,31 @@
 #
 # main author: Derek Vitrano
 
+"""
+MCP Sampling Implementation.
+This module provides a comprehensive implementation of MCP sampling following the official specification.
+It includes conversation management, context handling, and advanced sampling features.
+"""
+
 import asyncio
 import logging
 from typing import Dict, List, Any, Optional, Union
-from .mcp_transport import MCPTransport
+from .mcp_transport import MCPTransport, MCPTransportError
+from .mcp_protocol import (
+    MCPProtocolValidator,
+    create_sampling_request,
+    MCPMessage,
+    MCPMessageContent,
+    MCPModelPreferences,
+    MCPIncludeContext
+)
 
 
 class MCPSamplingManager:
     """
-    Manager class for handling MCP sampling requests with advanced features like
-    conversation context, system prompts, and model preferences.
+    Manager class for handling MCP sampling requests following the official MCP specification.
+    Provides advanced features like conversation context, system prompts, model preferences,
+    and proper message formatting according to the MCP protocol.
     """
 
     def __init__(self, transport: MCPTransport, config: Dict[str, Any]):
@@ -30,80 +45,101 @@ class MCPSamplingManager:
         self.transport = transport
         self.config = config
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.validator = MCPProtocolValidator()
         self.conversation_history: List[Dict[str, Any]] = []
+        self.default_sampling_params = config.get("default_sampling_params", {})
 
     async def create_message(
         self,
         messages: List[Dict[str, Any]],
         system_prompt: Optional[str] = None,
         model_preferences: Optional[Dict[str, Any]] = None,
-        sampling_config: Optional[Dict[str, Any]] = None,
-        include_context: str = "thisServer",
+        include_context: str = "none",
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        stop_sequences: Optional[List[str]] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Create a message using MCP sampling.
+        Create a message using MCP sampling following the official specification.
 
-        :param messages: List of messages in the conversation
+        :param messages: List of messages in the conversation (MCP format)
         :type messages: List[Dict[str, Any]]
         :param system_prompt: Optional system prompt
         :type system_prompt: Optional[str]
         :param model_preferences: Model selection preferences
         :type model_preferences: Optional[Dict[str, Any]]
-        :param sampling_config: Sampling configuration
-        :type sampling_config: Optional[Dict[str, Any]]
-        :param include_context: Context inclusion setting
+        :param include_context: Context inclusion setting ("none", "thisServer", "allServers")
         :type include_context: str
+        :param temperature: Sampling temperature
+        :type temperature: Optional[float]
+        :param max_tokens: Maximum tokens to generate
+        :type max_tokens: Optional[int]
+        :param stop_sequences: Stop sequences
+        :type stop_sequences: Optional[List[str]]
         :param metadata: Additional metadata
         :type metadata: Optional[Dict[str, Any]]
-        :return: The response from the MCP host
+        :return: The response from the MCP server
         :rtype: Dict[str, Any]
         """
         # Use defaults from config if not provided
         if model_preferences is None:
-            model_preferences = self.config.get("model_preferences", {})
-        if sampling_config is None:
-            sampling_config = self.config.get("sampling_config", {})
+            model_preferences = self.default_sampling_params.get("modelPreferences")
+        if temperature is None:
+            temperature = self.default_sampling_params.get("temperature")
+        if max_tokens is None:
+            max_tokens = self.default_sampling_params.get("maxTokens", 1000)
+        if stop_sequences is None:
+            stop_sequences = self.default_sampling_params.get("stopSequences")
         if metadata is None:
             metadata = {}
 
-        # Build the sampling request
-        request = {
-            "messages": messages,
-            "modelPreferences": model_preferences,
-            "includeContext": include_context,
-            "temperature": sampling_config.get("temperature", 1.0),
-            "maxTokens": sampling_config.get("max_tokens", 4096),
-            "stopSequences": sampling_config.get("stop_sequences", []),
-            "metadata": {
+        # Validate include_context
+        valid_contexts = [c.value for c in MCPIncludeContext]
+        if include_context not in valid_contexts:
+            raise ValueError(f"Invalid include_context: {include_context}. Must be one of {valid_contexts}")
+
+        # Create the sampling request using the protocol utility
+        request = create_sampling_request(
+            messages=messages,
+            model_preferences=model_preferences,
+            system_prompt=system_prompt,
+            include_context=include_context,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stop_sequences=stop_sequences,
+            metadata={
                 **metadata,
                 "source": "graph_of_thoughts_sampling",
-                "timestamp": asyncio.get_event_loop().time()
+                "manager_version": "1.0.0"
             }
-        }
+        )
 
-        # Add system prompt if provided
-        if system_prompt:
-            request["systemPrompt"] = system_prompt
+        # Validate the request
+        if not self.validator.validate_sampling_request(request):
+            raise ValueError("Invalid sampling request format")
 
         self.logger.debug(f"Sending MCP sampling request: {request}")
 
         try:
             response = await self.transport.send_sampling_request(request)
-            
-            # Update conversation history
+
+            # Update conversation history with properly formatted messages
             self.conversation_history.extend(messages)
             if response.get("content"):
                 self.conversation_history.append({
-                    "role": "assistant",
+                    "role": response.get("role", "assistant"),
                     "content": response["content"]
                 })
 
             return response
 
+        except MCPTransportError as e:
+            self.logger.error(f"MCP transport error: {e}")
+            raise
         except Exception as e:
             self.logger.error(f"MCP sampling request failed: {e}")
-            raise
+            raise MCPTransportError(f"Sampling failed: {e}")
 
     async def create_simple_completion(
         self,

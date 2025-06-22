@@ -1,18 +1,24 @@
-# Migration Guide: From API Keys to Model Context Protocol (MCP)
+# Migration Guide: MCP Protocol Compliance Upgrade
 
-This guide helps you migrate your Graph of Thoughts implementation from using direct API key-based language models to the Model Context Protocol (MCP) for enhanced security, flexibility, and integration with modern AI development environments.
+This guide helps you migrate from the previous MCP implementation to the new protocol-compliant version that follows the official MCP specification. The new implementation provides better compatibility, validation, and adherence to MCP standards.
 
 ## Overview
 
-The Model Context Protocol (MCP) provides a standardized way to connect AI applications to language models through various hosts like Claude Desktop, VSCode, Cursor, or remote MCP servers. This eliminates the need to manage API keys directly in your code and provides better integration with your development environment.
+The refactored MCP implementation brings full compliance with the official Model Context Protocol specification, including:
 
-## Benefits of MCP Migration
+- **Protocol Compliance**: Follows MCP specification exactly for maximum compatibility
+- **Proper Message Formatting**: Uses correct JSON-RPC 2.0 message structure
+- **Transport Layer Improvements**: Robust stdio and HTTP transport implementations
+- **Validation & Error Handling**: Built-in validation for all MCP messages and configurations
+- **Advanced Sampling**: Full implementation of MCP sampling protocol
 
-- **Enhanced Security**: No need to store API keys in configuration files
-- **Better Integration**: Seamless connection with AI-enabled IDEs and applications
-- **Flexibility**: Switch between different language models and providers easily
-- **Human-in-the-Loop**: Built-in support for user oversight and control
-- **Context Sharing**: Automatic context sharing between tools and applications
+## Benefits of the New Implementation
+
+- **Standards Compliance**: Full adherence to the official MCP specification
+- **Better Error Handling**: Comprehensive validation and error reporting
+- **Improved Transport Layer**: Robust stdio and HTTP transport implementations
+- **Enhanced Security**: Proper session management and authentication support
+- **Future-Proof**: Compatible with evolving MCP ecosystem
 
 ## Prerequisites
 
@@ -49,7 +55,9 @@ Create an MCP configuration file by copying the template:
 cp graph_of_thoughts/language_models/mcp_config_template.json graph_of_thoughts/language_models/mcp_config.json
 ```
 
-Edit the configuration file to match your setup:
+## Configuration Changes
+
+### Old MCP Configuration Format
 
 ```json
 {
@@ -57,10 +65,7 @@ Edit the configuration file to match your setup:
         "transport_type": "stdio",
         "host_type": "claude_desktop",
         "model_preferences": {
-            "hints": [
-                {"name": "claude-3-5-sonnet"},
-                {"name": "claude-3-haiku"}
-            ],
+            "hints": [{"name": "claude-3-5-sonnet"}],
             "costPriority": 0.3,
             "speedPriority": 0.4,
             "intelligencePriority": 0.8
@@ -81,6 +86,60 @@ Edit the configuration file to match your setup:
     }
 }
 ```
+
+### New MCP Configuration Format (Protocol-Compliant)
+
+```json
+{
+    "mcp_claude_desktop": {
+        "transport": {
+            "type": "stdio",
+            "command": "claude-desktop-mcp-server",
+            "args": [],
+            "env": {}
+        },
+        "client_info": {
+            "name": "graph-of-thoughts",
+            "version": "0.0.3"
+        },
+        "capabilities": {
+            "sampling": {}
+        },
+        "default_sampling_params": {
+            "modelPreferences": {
+                "hints": [{"name": "claude-3-5-sonnet"}],
+                "costPriority": 0.3,
+                "speedPriority": 0.4,
+                "intelligencePriority": 0.8
+            },
+            "temperature": 1.0,
+            "maxTokens": 4096,
+            "stopSequences": [],
+            "includeContext": "thisServer"
+        },
+        "connection_config": {
+            "timeout": 30.0,
+            "retry_attempts": 3,
+            "retry_delay": 1.0
+        },
+        "cost_tracking": {
+            "prompt_token_cost": 0.003,
+            "response_token_cost": 0.015
+        }
+    }
+}
+```
+
+### Key Changes in Configuration
+
+1. **Transport Structure**: `transport_type` and `host_type` are replaced with a structured `transport` object
+2. **Client Information**: New `client_info` section with application name and version
+3. **Capabilities Declaration**: Explicit `capabilities` section to declare supported features
+4. **Sampling Parameters**: Moved to `default_sampling_params` with MCP-compliant field names:
+   - `max_tokens` → `maxTokens`
+   - `include_context` → `includeContext`
+   - `model_preferences` → `modelPreferences`
+5. **Cost Tracking**: Separated into its own `cost_tracking` section
 
 ### Step 3: Update Your Code
 

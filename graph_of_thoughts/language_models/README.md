@@ -61,15 +61,38 @@ lm = controller.Llama2HF(
 - Generate HuggingFace access token.
 - Log in from CLI with: `huggingface-cli login --token <your token>`.
 
-### MCP Language Models
-- Supports connecting to MCP hosts like Claude Desktop, VSCode, Cursor, or remote MCP servers.
-- Adjust the predefined `mcp_claude_desktop`, `mcp_vscode`, `mcp_cursor`, or `mcp_http_server` configurations or create a new configuration with a unique key.
-- Copy `mcp_config_template.json` to `mcp_config.json` and configure your MCP settings:
-  - `transport_type`: "stdio" for local hosts or "http" for remote servers
-  - `host_type`: Type of MCP host (claude_desktop, vscode, cursor, http_server)
-  - `model_preferences`: Model selection hints and priorities
-  - `sampling_config`: Temperature, max tokens, and other sampling parameters
-  - `connection_config`: Timeout and retry settings
+### MCP Language Models (Model Context Protocol)
+- **Protocol-Compliant Implementation**: Follows the official MCP specification for maximum compatibility
+- **Multiple Transport Types**: Supports both stdio and HTTP transports according to MCP standards
+- **Advanced Sampling**: Full implementation of MCP sampling protocol with model preferences and context management
+- **Validation & Error Handling**: Built-in validation for MCP messages and configurations
+
+#### Configuration
+Copy `mcp_config_template.json` to `mcp_config.json` and configure your MCP settings:
+
+**Transport Configuration:**
+- `transport.type`: "stdio" for local MCP servers or "http" for remote servers
+- `transport.command`: Command to start the MCP server (stdio only)
+- `transport.args`: Arguments for the MCP server command (stdio only)
+- `transport.url`: URL for HTTP MCP servers (http only)
+- `transport.headers`: HTTP headers for authentication (http only)
+
+**Client Information:**
+- `client_info.name`: Your application name
+- `client_info.version`: Your application version
+
+**Capabilities:**
+- `capabilities.sampling`: Enable sampling support
+
+**Default Sampling Parameters:**
+- `default_sampling_params.modelPreferences`: Model selection hints and priorities
+- `default_sampling_params.temperature`: Sampling temperature (0.0-1.0)
+- `default_sampling_params.maxTokens`: Maximum tokens to generate
+- `default_sampling_params.includeContext`: Context inclusion ("none", "thisServer", "allServers")
+
+**Connection & Cost Tracking:**
+- `connection_config`: Timeout and retry settings
+- `cost_tracking`: Token cost configuration for usage tracking
 
 - Instantiate the MCP language model based on the selected configuration key:
 ```python

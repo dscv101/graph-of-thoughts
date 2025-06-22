@@ -1,106 +1,160 @@
 {
     "mcp_claude_desktop": {
-        "transport_type": "stdio",
-        "host_type": "claude_desktop",
-        "model_preferences": {
-            "hints": [
-                {"name": "claude-3-5-sonnet"},
-                {"name": "claude-3-haiku"}
-            ],
-            "costPriority": 0.3,
-            "speedPriority": 0.4,
-            "intelligencePriority": 0.8
+        "transport": {
+            "type": "stdio",
+            "command": "claude-desktop-mcp-server",
+            "args": [],
+            "env": {}
         },
-        "sampling_config": {
+        "client_info": {
+            "name": "graph-of-thoughts",
+            "version": "0.0.3"
+        },
+        "capabilities": {
+            "sampling": {}
+        },
+        "default_sampling_params": {
+            "modelPreferences": {
+                "hints": [
+                    {"name": "claude-3-5-sonnet"},
+                    {"name": "claude-3-haiku"}
+                ],
+                "costPriority": 0.3,
+                "speedPriority": 0.4,
+                "intelligencePriority": 0.8
+            },
             "temperature": 1.0,
-            "max_tokens": 4096,
-            "stop_sequences": [],
-            "include_context": "thisServer"
+            "maxTokens": 4096,
+            "stopSequences": [],
+            "includeContext": "thisServer"
         },
         "connection_config": {
             "timeout": 30.0,
             "retry_attempts": 3,
             "retry_delay": 1.0
         },
-        "prompt_token_cost": 0.003,
-        "response_token_cost": 0.015
+        "cost_tracking": {
+            "prompt_token_cost": 0.003,
+            "response_token_cost": 0.015
+        }
     },
     "mcp_vscode": {
-        "transport_type": "stdio",
-        "host_type": "vscode",
-        "model_preferences": {
-            "hints": [
-                {"name": "gpt-4"},
-                {"name": "gpt-3.5-turbo"}
-            ],
-            "costPriority": 0.5,
-            "speedPriority": 0.6,
-            "intelligencePriority": 0.7
+        "transport": {
+            "type": "stdio",
+            "command": "code",
+            "args": ["--mcp-server"],
+            "env": {}
         },
-        "sampling_config": {
+        "client_info": {
+            "name": "graph-of-thoughts",
+            "version": "0.0.3"
+        },
+        "capabilities": {
+            "sampling": {}
+        },
+        "default_sampling_params": {
+            "modelPreferences": {
+                "hints": [
+                    {"name": "gpt-4"},
+                    {"name": "gpt-3.5-turbo"}
+                ],
+                "costPriority": 0.5,
+                "speedPriority": 0.6,
+                "intelligencePriority": 0.7
+            },
             "temperature": 1.0,
-            "max_tokens": 4096,
-            "stop_sequences": [],
-            "include_context": "thisServer"
+            "maxTokens": 4096,
+            "stopSequences": [],
+            "includeContext": "thisServer"
         },
         "connection_config": {
             "timeout": 30.0,
             "retry_attempts": 3,
             "retry_delay": 1.0
         },
-        "prompt_token_cost": 0.03,
-        "response_token_cost": 0.06
+        "cost_tracking": {
+            "prompt_token_cost": 0.03,
+            "response_token_cost": 0.06
+        }
     },
     "mcp_cursor": {
-        "transport_type": "stdio",
-        "host_type": "cursor",
-        "model_preferences": {
-            "hints": [
-                {"name": "claude-3-5-sonnet"},
-                {"name": "gpt-4"}
-            ],
-            "costPriority": 0.4,
-            "speedPriority": 0.5,
-            "intelligencePriority": 0.8
+        "transport": {
+            "type": "stdio",
+            "command": "cursor",
+            "args": ["--mcp-server"],
+            "env": {}
         },
-        "sampling_config": {
+        "client_info": {
+            "name": "graph-of-thoughts",
+            "version": "0.0.3"
+        },
+        "capabilities": {
+            "sampling": {}
+        },
+        "default_sampling_params": {
+            "modelPreferences": {
+                "hints": [
+                    {"name": "claude-3-5-sonnet"},
+                    {"name": "gpt-4"}
+                ],
+                "costPriority": 0.4,
+                "speedPriority": 0.5,
+                "intelligencePriority": 0.8
+            },
             "temperature": 1.0,
-            "max_tokens": 4096,
-            "stop_sequences": [],
-            "include_context": "thisServer"
+            "maxTokens": 4096,
+            "stopSequences": [],
+            "includeContext": "thisServer"
         },
         "connection_config": {
             "timeout": 30.0,
             "retry_attempts": 3,
             "retry_delay": 1.0
         },
-        "prompt_token_cost": 0.003,
-        "response_token_cost": 0.015
+        "cost_tracking": {
+            "prompt_token_cost": 0.003,
+            "response_token_cost": 0.015
+        }
     },
     "mcp_http_server": {
-        "transport_type": "http",
-        "host_type": "http_server",
-        "server_url": "http://localhost:8000/mcp",
-        "model_preferences": {
-            "hints": [
-                {"name": "claude-3-5-sonnet"}
-            ],
-            "costPriority": 0.3,
-            "speedPriority": 0.5,
-            "intelligencePriority": 0.9
+        "transport": {
+            "type": "http",
+            "url": "http://localhost:8000/mcp",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream"
+            },
+            "session_management": true
         },
-        "sampling_config": {
+        "client_info": {
+            "name": "graph-of-thoughts",
+            "version": "0.0.3"
+        },
+        "capabilities": {
+            "sampling": {}
+        },
+        "default_sampling_params": {
+            "modelPreferences": {
+                "hints": [
+                    {"name": "claude-3-5-sonnet"}
+                ],
+                "costPriority": 0.3,
+                "speedPriority": 0.5,
+                "intelligencePriority": 0.9
+            },
             "temperature": 1.0,
-            "max_tokens": 4096,
-            "stop_sequences": [],
-            "include_context": "allServers"
+            "maxTokens": 4096,
+            "stopSequences": [],
+            "includeContext": "allServers"
         },
         "connection_config": {
             "timeout": 60.0,
             "retry_attempts": 5,
             "retry_delay": 2.0
         },
-        "prompt_token_cost": 0.003,
-        "response_token_cost": 0.015
+        "cost_tracking": {
+            "prompt_token_cost": 0.003,
+            "response_token_cost": 0.015
+        }
     }
 }

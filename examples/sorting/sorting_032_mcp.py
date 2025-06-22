@@ -198,8 +198,10 @@ def demo_mcp_connection():
         )
         
         print("MCP Language Model created successfully!")
-        print(f"Host type: {lm.host_type}")
         print(f"Transport type: {lm.transport_type}")
+        print(f"Client info: {lm.client_info}")
+        print(f"Capabilities: {lm.capabilities}")
+        print("Note: This example uses the new MCP protocol-compliant implementation")
         print()
         
         # Create a simple Graph of Operations for demonstration
