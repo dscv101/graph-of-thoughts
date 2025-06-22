@@ -5,6 +5,7 @@ The Language Models module is responsible for managing the large language models
 Currently, the framework supports the following LLMs:
 - GPT-4 / GPT-3.5 (Remote - OpenAI API)
 - LLaMA-2 (Local - HuggingFace Transformers)
+- MCP Language Models (Remote/Local - Model Context Protocol)
 
 The following sections describe how to instantiate individual LLMs and how to add new LLMs to the framework.
 
@@ -59,6 +60,24 @@ lm = controller.Llama2HF(
 - After the access is granted, go to [HuggingFace LLaMA-2 model card](https://huggingface.co/meta-llama/Llama-2-7b-chat-hf), log in and accept the license (a _"You have been granted access to this model"_ message should appear).
 - Generate HuggingFace access token.
 - Log in from CLI with: `huggingface-cli login --token <your token>`.
+
+### MCP Language Models
+- Supports connecting to MCP hosts like Claude Desktop, VSCode, Cursor, or remote MCP servers.
+- Adjust the predefined `mcp_claude_desktop`, `mcp_vscode`, `mcp_cursor`, or `mcp_http_server` configurations or create a new configuration with a unique key.
+- Copy `mcp_config_template.json` to `mcp_config.json` and configure your MCP settings:
+  - `transport_type`: "stdio" for local hosts or "http" for remote servers
+  - `host_type`: Type of MCP host (claude_desktop, vscode, cursor, http_server)
+  - `model_preferences`: Model selection hints and priorities
+  - `sampling_config`: Temperature, max tokens, and other sampling parameters
+  - `connection_config`: Timeout and retry settings
+
+- Instantiate the MCP language model based on the selected configuration key:
+```python
+lm = language_models.MCPLanguageModel(
+    "path/to/mcp_config.json",
+    model_name=<configuration key>
+)
+```
 
 Note: 4-bit quantization is used to reduce the model size for inference. During instantiation, the model is downloaded from HuggingFace into the cache directory specified in the `config.json`. Running queries using larger models will require multiple GPUs (splitting across many GPUs is done automatically by the Transformers library).
 
