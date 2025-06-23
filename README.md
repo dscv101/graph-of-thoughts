@@ -4,9 +4,36 @@
   <img src="paper/pics/preview.svg">
 </p>
 
-This is the official implementation of [Graph of Thoughts: Solving Elaborate Problems with Large Language Models](https://arxiv.org/pdf/2308.09687.pdf).  
-This framework gives you the ability to solve complex problems by modeling them as a Graph of Operations (GoO), which is automatically executed with a Large Language Model (LLM) as the engine.  
+This is the official implementation of [Graph of Thoughts: Solving Elaborate Problems with Large Language Models](https://arxiv.org/pdf/2308.09687.pdf).
+This framework gives you the ability to solve complex problems by modeling them as a Graph of Operations (GoO), which is automatically executed with a Large Language Model (LLM) as the engine.
 This framework is designed to be flexible and extensible, allowing you to not only solve problems using the new GoT approach, but also to implement GoOs resembling previous approaches like CoT or ToT.
+
+## ✨ New: Enhanced Batch Processing
+
+The framework now includes powerful **batch processing capabilities** that significantly improve performance when working with multiple thoughts:
+
+- **🚀 Concurrent Processing**: Execute multiple LLM queries simultaneously
+- **⚡ Performance Gains**: Up to 7.5x speedup for large batches
+- **🔧 MCP Integration**: Full compatibility with Model Context Protocol hosts (Claude Desktop, VSCode, Cursor)
+- **🛡️ Robust Error Handling**: Automatic retry mechanisms and fallback strategies
+- **📊 Configurable Concurrency**: Fine-tune performance for your specific use case
+
+```python
+# New batch-aware operations for improved performance
+from graph_of_thoughts.operations import BatchGenerate, BatchScore, BatchAggregate
+from graph_of_thoughts.language_models import MCPLanguageModel
+
+# Process multiple queries concurrently
+lm = MCPLanguageModel("config.json", "mcp_claude_desktop")
+async with lm:
+    responses = await lm.query_batch([
+        "Generate creative ideas for renewable energy",
+        "Analyze market trends in AI",
+        "Propose solutions for urban planning"
+    ], max_concurrent=5)
+```
+
+See the [Batch Processing Documentation](docs/BATCH_PROCESSING.md) for detailed usage instructions and performance optimization tips.
 
 ## Setup Guide
 
@@ -29,6 +56,16 @@ pip install -e .
 ### Configuring the LLM
 
 In order to use the framework, you need to have access to an LLM.
+
+**Option 1: MCP Integration (Recommended)**
+For the best performance with batch processing, use the new MCP (Model Context Protocol) integration:
+```bash
+# Copy and customize the MCP configuration template
+cp graph_of_thoughts/language_models/mcp_config_template.json config.json
+# Edit config.json with your MCP host settings
+```
+
+**Option 2: Traditional API Keys**
 Please follow the instructions in the [Controller README](graph_of_thoughts/controller/README.md) to configure the LLM of your choice.
 
 ## Quick Start
@@ -118,15 +155,27 @@ We took extra care to fully document the code, so that you can easily understand
 
 ## Examples
 
-The [examples](examples) directory contains several examples of problems that can be solved using the framework, including the ones presented in the paper.  
-It is a great starting point for learning how to use the framework to solve real problems.  
+The [examples](examples) directory contains several examples of problems that can be solved using the framework, including the ones presented in the paper.
+It is a great starting point for learning how to use the framework to solve real problems.
 Each example contains a `README.md` file with instructions on how to run it and play with it. The code is fully documented and should be easy to follow.
 You can also run the examples straight from the main directory. Note that the results will be stored in the respective examples sub-directory.
 
-Try for instance:
+### Traditional Examples
 ```bash
 python -m examples.sorting.sorting_032
 python -m examples.keyword_counting.keyword_counting
+```
+
+### New Batch Processing Examples
+```bash
+# Simple batch processing demonstration
+python examples/simple_batch_example.py
+
+# Comprehensive batch processing demo with performance comparison
+python examples/batch_processing_demo.py
+
+# Performance benchmark comparing batch vs sequential processing
+python examples/batch_performance_benchmark.py
 ```
 ## Paper Results
 

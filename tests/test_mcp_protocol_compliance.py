@@ -7,16 +7,23 @@
 # main author: Derek Vitrano
 
 """
-Test suite for MCP protocol compliance.
-This module tests the MCP implementation against the official specification
-to ensure protocol compliance and proper message formatting.
+Comprehensive unit tests for MCP Protocol implementation.
+
+This module tests the MCP protocol layer including message validation,
+request/response formatting, and protocol compliance.
 """
 
-import pytest
+import unittest
 import json
 import asyncio
+import pytest
 from unittest.mock import Mock, AsyncMock, patch
 from typing import Dict, Any
+from pathlib import Path
+
+import sys
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
 from graph_of_thoughts.language_models.mcp_protocol import (
     MCPProtocolValidator,
@@ -37,25 +44,25 @@ from graph_of_thoughts.language_models.mcp_transport import (
 from graph_of_thoughts.language_models.mcp_client import MCPLanguageModel
 
 
-class TestMCPProtocolValidator:
+class TestMCPProtocolValidator(unittest.TestCase):
     """Test the MCP protocol validator."""
-    
-    def setup_method(self):
+
+    def setUp(self):
         """Set up test fixtures."""
         self.validator = MCPProtocolValidator()
-    
+
     def test_validate_client_info_valid(self):
         """Test validation of valid client info."""
         client_info = {
             "name": "graph-of-thoughts",
             "version": "0.0.3"
         }
-        assert self.validator.validate_client_info(client_info)
-    
+        self.assertTrue(self.validator.validate_client_info(client_info))
+
     def test_validate_client_info_missing_fields(self):
         """Test validation of client info with missing fields."""
         client_info = {"name": "graph-of-thoughts"}
-        assert not self.validator.validate_client_info(client_info)
+        self.assertFalse(self.validator.validate_client_info(client_info))
     
     def test_validate_stdio_transport_valid(self):
         """Test validation of valid stdio transport."""
@@ -65,8 +72,8 @@ class TestMCPProtocolValidator:
             "args": [],
             "env": {}
         }
-        assert self.validator.validate_transport_config(transport)
-    
+        self.assertTrue(self.validator.validate_transport_config(transport))
+
     def test_validate_http_transport_valid(self):
         """Test validation of valid HTTP transport."""
         transport = {
@@ -74,15 +81,15 @@ class TestMCPProtocolValidator:
             "url": "http://localhost:8000/mcp",
             "headers": {"Content-Type": "application/json"}
         }
-        assert self.validator.validate_transport_config(transport)
-    
+        self.assertTrue(self.validator.validate_transport_config(transport))
+
     def test_validate_transport_invalid_type(self):
         """Test validation of transport with invalid type."""
         transport = {
             "type": "invalid",
             "command": "test"
         }
-        assert not self.validator.validate_transport_config(transport)
+        self.assertFalse(self.validator.validate_transport_config(transport))
     
     def test_validate_model_preferences_valid(self):
         """Test validation of valid model preferences."""
@@ -92,16 +99,16 @@ class TestMCPProtocolValidator:
             "speedPriority": 0.4,
             "intelligencePriority": 0.8
         }
-        assert self.validator.validate_model_preferences(preferences)
-    
+        self.assertTrue(self.validator.validate_model_preferences(preferences))
+
     def test_validate_model_preferences_invalid_priority(self):
         """Test validation of model preferences with invalid priority."""
         preferences = {
             "hints": [{"name": "claude-3-5-sonnet"}],
             "costPriority": 1.5  # Invalid: > 1
         }
-        assert not self.validator.validate_model_preferences(preferences)
-    
+        self.assertFalse(self.validator.validate_model_preferences(preferences))
+
     def test_validate_sampling_request_valid(self):
         """Test validation of valid sampling request."""
         request = {
@@ -117,7 +124,7 @@ class TestMCPProtocolValidator:
             "maxTokens": 1000,
             "includeContext": "none"
         }
-        assert self.validator.validate_sampling_request(request)
+        self.assertTrue(self.validator.validate_sampling_request(request))
     
     def test_validate_sampling_request_missing_messages(self):
         """Test validation of sampling request with missing messages."""

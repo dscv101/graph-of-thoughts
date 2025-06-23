@@ -8,8 +8,157 @@
 
 """
 MCP Sampling Implementation.
+
 This module provides a comprehensive implementation of MCP sampling following the official specification.
-It includes conversation management, context handling, and advanced sampling features.
+It includes conversation management, context handling, and advanced sampling features for sophisticated
+AI interactions through the Model Context Protocol.
+
+Key Features:
+    - Full MCP sampling protocol compliance
+    - Conversation history management and context preservation
+    - Support for system prompts and model preferences
+    - Batch processing capabilities for multiple requests
+    - Retry logic with exponential backoff
+    - Multi-turn conversation support
+    - Flexible content type handling (text, image, etc.)
+    - Advanced sampling parameter configuration
+
+Sampling Capabilities:
+    1. Simple Completions: Single-turn text generation
+    2. Conversation Completions: Multi-turn dialogue with history
+    3. Multi-turn Completions: Structured conversation processing
+    4. Batch Completions: Parallel processing of multiple prompts
+    5. Retry Completions: Robust completion with automatic retry
+
+Example Usage:
+    Basic sampling manager setup:
+
+    ```python
+    from graph_of_thoughts.language_models.mcp_transport import create_transport
+    from graph_of_thoughts.language_models.mcp_sampling import MCPSamplingManager
+
+    # Create transport and sampling manager
+    config = {
+        "transport": {"type": "stdio", "command": "claude-desktop"},
+        "client_info": {"name": "my-app", "version": "1.0.0"},
+        "capabilities": {"sampling": {}},
+        "default_sampling_params": {
+            "temperature": 0.7,
+            "maxTokens": 1000,
+            "includeContext": "thisServer"
+        }
+    }
+
+    transport = create_transport(config)
+    sampling_manager = MCPSamplingManager(transport, config)
+
+    # Simple completion
+    async with transport:
+        response = await sampling_manager.create_simple_completion(
+            "Explain the concept of machine learning"
+        )
+        print(f"Response: {response}")
+    ```
+
+    Conversation management:
+
+    ```python
+    async def chat_example():
+        async with transport:
+            # Start conversation
+            response1 = await sampling_manager.create_conversation_completion(
+                "Hello, I'm interested in learning about Python programming."
+            )
+            print(f"Assistant: {response1}")
+
+            # Continue conversation with history
+            response2 = await sampling_manager.create_conversation_completion(
+                "What are the main advantages of Python?",
+                use_history=True
+            )
+            print(f"Assistant: {response2}")
+
+            # Check conversation history
+            history = sampling_manager.get_conversation_history()
+            print(f"Conversation has {len(history)} messages")
+    ```
+
+    Batch processing:
+
+    ```python
+    async def batch_example():
+        prompts = [
+            "Summarize the benefits of renewable energy",
+            "Explain quantum computing in simple terms",
+            "Describe the process of photosynthesis"
+        ]
+
+        async with transport:
+            responses = await sampling_manager.create_batch_completions(
+                prompts,
+                system_prompt="You are a helpful science educator."
+            )
+
+            for i, response in enumerate(responses):
+                print(f"Response {i+1}: {response}")
+    ```
+
+    Advanced sampling with custom parameters:
+
+    ```python
+    async def advanced_sampling():
+        messages = [
+            {
+                "role": "user",
+                "content": {
+                    "type": "text",
+                    "text": "Write a creative story about space exploration"
+                }
+            }
+        ]
+
+        model_preferences = {
+            "hints": [{"name": "claude-3-5-sonnet"}],
+            "costPriority": 0.3,
+            "speedPriority": 0.4,
+            "intelligencePriority": 0.9
+        }
+
+        async with transport:
+            response = await sampling_manager.create_message(
+                messages=messages,
+                system_prompt="You are a creative science fiction writer.",
+                model_preferences=model_preferences,
+                temperature=0.8,
+                max_tokens=2000,
+                stop_sequences=["THE END"],
+                metadata={"genre": "sci-fi", "style": "narrative"}
+            )
+
+            print(f"Story: {response['content']['text']}")
+    ```
+
+Error Handling:
+    The sampling manager provides robust error handling for various scenarios:
+
+    ```python
+    from graph_of_thoughts.language_models.mcp_transport import MCPTransportError
+
+    try:
+        response = await sampling_manager.create_completion_with_retry(
+            "Complex query that might fail",
+            max_retries=3,
+            retry_delay=1.0
+        )
+    except MCPTransportError as e:
+        print(f"All retry attempts failed: {e}")
+    ```
+
+Performance Considerations:
+    - Conversation history is maintained in memory for context
+    - Batch operations use asyncio.gather for parallel processing
+    - Retry logic includes exponential backoff to avoid overwhelming servers
+    - Message validation occurs before sending to prevent unnecessary round trips
 """
 
 import asyncio
@@ -33,7 +182,7 @@ class MCPSamplingManager:
     and proper message formatting according to the MCP protocol.
     """
 
-    def __init__(self, transport: MCPTransport, config: Dict[str, Any]):
+    def __init__(self, transport: MCPTransport, config: Dict[str, Any]) -> None:
         """
         Initialize the MCP sampling manager.
 
@@ -316,7 +465,7 @@ class MCPSamplingManager:
         **kwargs
     ) -> str:
         """
-        Create a completion with retry logic.
+        Create a completion with enhanced retry logic.
 
         :param prompt: The user prompt
         :type prompt: str
@@ -328,18 +477,52 @@ class MCPSamplingManager:
         :return: The text response
         :rtype: str
         """
+        # Import retry classes locally to avoid circular imports
+        from .mcp_client import RetryConfig, RetryManager, RetryStrategy, BackoffJitterType
+
+        # Create a retry configuration for this completion
+        retry_config = RetryConfig(
+            max_attempts=max_retries,
+            base_delay=retry_delay,
+            max_delay=60.0,
+            backoff_multiplier=2.0,
+            strategy=RetryStrategy.EXPONENTIAL,
+            jitter_type=BackoffJitterType.EQUAL,
+            timeout_multiplier=1.0,
+            circuit_breaker_integration=False  # Disable for sampling manager
+        )
+
+        retry_manager = RetryManager(retry_config)
         last_exception = None
-        
-        for attempt in range(max_retries + 1):
+
+        for attempt in range(max_retries):
             try:
-                return await self.create_simple_completion(prompt, **kwargs)
+                result = await self.create_simple_completion(prompt, **kwargs)
+                retry_manager.record_success()
+                return result
             except Exception as e:
                 last_exception = e
-                if attempt < max_retries:
-                    self.logger.warning(f"Completion attempt {attempt + 1} failed: {e}, retrying in {retry_delay}s")
-                    await asyncio.sleep(retry_delay)
-                    retry_delay *= 2  # Exponential backoff
-                else:
-                    self.logger.error(f"All {max_retries + 1} completion attempts failed")
-        
+
+                # Check if we should retry this error
+                if not retry_manager.should_retry(e, attempt):
+                    retry_manager.record_failure()
+                    break
+
+                # Don't retry on the last attempt
+                if attempt >= max_retries - 1:
+                    retry_manager.record_failure()
+                    break
+
+                # Calculate delay with jitter and strategy
+                delay = retry_manager.calculate_delay(attempt, type(e))
+
+                self.logger.warning(
+                    f"Completion attempt {attempt + 1} failed: {e}, "
+                    f"retrying in {delay:.2f}s (strategy: {retry_config.strategy.value})"
+                )
+
+                retry_manager.record_failure()
+                await asyncio.sleep(delay)
+
+        self.logger.error(f"All {max_retries} completion attempts failed")
         raise last_exception

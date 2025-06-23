@@ -15,7 +15,7 @@ from typing import Dict, List, Any
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Test imports without dependencies that might not be installed
-def test_imports():
+def test_imports() -> bool:
     """Test that our MCP files can be imported."""
     try:
         # Test basic file existence
@@ -44,11 +44,11 @@ class MCPIntegrationTester:
     Test suite for MCP integration.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger(self.__class__.__name__)
         self.test_results = {}
 
-    def setup_logging(self):
+    def setup_logging(self) -> None:
         """Set up logging for tests."""
         logging.basicConfig(
             level=logging.INFO,
@@ -74,11 +74,24 @@ class MCPIntegrationTester:
                     return False
 
                 cfg = config[config_name]
-                required_fields = ["transport_type", "host_type", "model_preferences", "sampling_config"]
+                # Updated to match new MCP protocol-compliant configuration schema
+                required_fields = ["transport", "client_info", "capabilities", "default_sampling_params"]
                 for field in required_fields:
                     if field not in cfg:
                         self.logger.error(f"Missing field {field} in {config_name}")
                         return False
+
+                # Validate transport structure
+                transport = cfg.get("transport", {})
+                if "type" not in transport:
+                    self.logger.error(f"Missing 'type' in transport config for {config_name}")
+                    return False
+
+                # Validate client_info structure
+                client_info = cfg.get("client_info", {})
+                if "name" not in client_info or "version" not in client_info:
+                    self.logger.error(f"Missing 'name' or 'version' in client_info for {config_name}")
+                    return False
 
             self.logger.info("✓ Configuration loading test passed")
             return True
@@ -342,7 +355,7 @@ class MCPIntegrationTester:
         return report
 
 
-def main():
+def main() -> None:
     """Main test function."""
     print("MCP Integration Structure Test")
     print("=" * 40)

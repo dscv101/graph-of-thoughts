@@ -11,4 +11,7 @@ from .operations import (
     Selector,
     GroundTruth,
     Improve,
+    BatchGenerate,
+    BatchScore,
+    BatchAggregate,
 )

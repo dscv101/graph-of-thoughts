@@ -1,0 +1,119 @@
+{
+  "mcp_claude_desktop": {
+    "transport": {
+      "type": "stdio",
+      "command": "claude-desktop",
+      "args": ["--mcp-server"],
+      "env": {}
+    },
+    "client_info": {
+      "name": "graph-of-thoughts",
+      "version": "0.0.3"
+    },
+    "capabilities": {
+      "sampling": {}
+    },
+    "default_sampling_params": {
+      "temperature": 0.7,
+      "maxTokens": 1000,
+      "includeContext": "none"
+    },
+    "connection_config": {
+      "timeout": 30.0,
+      "request_timeout": 60.0,
+      "retry_attempts": 3
+    },
+    "cost_tracking": {
+      "prompt_token_cost": 0.003,
+      "response_token_cost": 0.015
+    },
+    "metrics": {
+      "enabled": true,
+      "export_interval": 60.0,
+      "export_format": "json",
+      "max_history_size": 1000,
+      "include_detailed_timings": true,
+      "export_file": "mcp_metrics.json",
+      "export_to_console": false
+    },
+    "circuit_breaker": {
+      "enabled": true,
+      "failure_threshold": 5,
+      "recovery_timeout": 30.0,
+      "half_open_max_calls": 3,
+      "success_threshold": 2,
+      "monitoring_window": 60.0,
+      "minimum_throughput": 10
+    },
+    "caching": {
+      "max_size": 1000,
+      "default_ttl": 3600.0,
+      "response_cache_size": 500,
+      "config_cache_size": 50,
+      "metadata_cache_size": 200,
+      "response_ttl": 1800.0,
+      "config_ttl": 7200.0,
+      "metadata_ttl": 3600.0
+    },
+    "batch_processing": {
+      "max_concurrent": 10,
+      "batch_size": 50,
+      "retry_attempts": 3,
+      "retry_delay": 1.0
+    }
+  },
+  "mcp_remote_server": {
+    "transport": {
+      "type": "http",
+      "url": "https://mcp-server.example.com/api",
+      "headers": {
+        "Authorization": "Bearer your-api-key-here"
+      },
+      "session_management": true
+    },
+    "client_info": {
+      "name": "graph-of-thoughts",
+      "version": "0.0.3"
+    },
+    "capabilities": {
+      "sampling": {}
+    },
+    "default_sampling_params": {
+      "temperature": 0.7,
+      "maxTokens": 1000,
+      "includeContext": "none"
+    },
+    "connection_config": {
+      "timeout": 30.0,
+      "request_timeout": 60.0,
+      "connection_pool": {
+        "max_connections": 20,
+        "max_keepalive_connections": 10,
+        "keepalive_expiry": 30.0,
+        "enable_http2": false,
+        "retries": 3
+      }
+    },
+    "cost_tracking": {
+      "prompt_token_cost": 0.002,
+      "response_token_cost": 0.010
+    },
+    "metrics": {
+      "enabled": true,
+      "export_interval": 30.0,
+      "export_format": "prometheus",
+      "max_history_size": 2000,
+      "include_detailed_timings": true,
+      "export_file": "mcp_metrics_remote.txt"
+    },
+    "circuit_breaker": {
+      "enabled": true,
+      "failure_threshold": 3,
+      "recovery_timeout": 60.0,
+      "half_open_max_calls": 2,
+      "success_threshold": 3,
+      "monitoring_window": 120.0,
+      "minimum_throughput": 5
+    }
+  }
+}

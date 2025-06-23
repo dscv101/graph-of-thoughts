@@ -33,9 +33,41 @@
             "retry_attempts": 3,
             "retry_delay": 1.0
         },
+        "retry_config": {
+            "max_attempts": 3,
+            "base_delay": 1.0,
+            "max_delay": 60.0,
+            "backoff_multiplier": 2.0,
+            "strategy": "exponential",
+            "jitter_type": "equal",
+            "timeout_multiplier": 1.0,
+            "circuit_breaker_integration": true,
+            "connection_error_max_attempts": null,
+            "timeout_error_max_attempts": null,
+            "server_error_max_attempts": 1,
+            "success_threshold_for_reduction": 5,
+            "failure_threshold_for_increase": 3
+        },
         "cost_tracking": {
             "prompt_token_cost": 0.003,
             "response_token_cost": 0.015
+        },
+        "batch_processing": {
+            "max_concurrent": 10,
+            "batch_size": 50,
+            "retry_attempts": 3,
+            "retry_delay": 1.0,
+            "timeout_per_request": 30.0,
+            "enable_by_default": true
+        },
+        "circuit_breaker": {
+            "enabled": false,
+            "failure_threshold": 5,
+            "recovery_timeout": 30.0,
+            "half_open_max_calls": 3,
+            "success_threshold": 2,
+            "monitoring_window": 60.0,
+            "minimum_throughput": 10
         }
     },
     "mcp_vscode": {
@@ -72,9 +104,41 @@
             "retry_attempts": 3,
             "retry_delay": 1.0
         },
+        "retry_config": {
+            "max_attempts": 3,
+            "base_delay": 1.0,
+            "max_delay": 60.0,
+            "backoff_multiplier": 2.0,
+            "strategy": "exponential",
+            "jitter_type": "equal",
+            "timeout_multiplier": 1.0,
+            "circuit_breaker_integration": true,
+            "connection_error_max_attempts": null,
+            "timeout_error_max_attempts": null,
+            "server_error_max_attempts": 1,
+            "success_threshold_for_reduction": 5,
+            "failure_threshold_for_increase": 3
+        },
         "cost_tracking": {
             "prompt_token_cost": 0.03,
             "response_token_cost": 0.06
+        },
+        "batch_processing": {
+            "max_concurrent": 8,
+            "batch_size": 30,
+            "retry_attempts": 3,
+            "retry_delay": 1.0,
+            "timeout_per_request": 30.0,
+            "enable_by_default": true
+        },
+        "circuit_breaker": {
+            "enabled": false,
+            "failure_threshold": 5,
+            "recovery_timeout": 30.0,
+            "half_open_max_calls": 3,
+            "success_threshold": 2,
+            "monitoring_window": 60.0,
+            "minimum_throughput": 10
         }
     },
     "mcp_cursor": {
@@ -111,9 +175,41 @@
             "retry_attempts": 3,
             "retry_delay": 1.0
         },
+        "retry_config": {
+            "max_attempts": 3,
+            "base_delay": 1.0,
+            "max_delay": 60.0,
+            "backoff_multiplier": 2.0,
+            "strategy": "exponential",
+            "jitter_type": "equal",
+            "timeout_multiplier": 1.0,
+            "circuit_breaker_integration": true,
+            "connection_error_max_attempts": null,
+            "timeout_error_max_attempts": null,
+            "server_error_max_attempts": 1,
+            "success_threshold_for_reduction": 5,
+            "failure_threshold_for_increase": 3
+        },
         "cost_tracking": {
             "prompt_token_cost": 0.003,
             "response_token_cost": 0.015
+        },
+        "batch_processing": {
+            "max_concurrent": 12,
+            "batch_size": 40,
+            "retry_attempts": 3,
+            "retry_delay": 1.0,
+            "timeout_per_request": 30.0,
+            "enable_by_default": true
+        },
+        "circuit_breaker": {
+            "enabled": false,
+            "failure_threshold": 5,
+            "recovery_timeout": 30.0,
+            "half_open_max_calls": 3,
+            "success_threshold": 2,
+            "monitoring_window": 60.0,
+            "minimum_throughput": 10
         }
     },
     "mcp_http_server": {
@@ -152,9 +248,41 @@
             "retry_attempts": 5,
             "retry_delay": 2.0
         },
+        "retry_config": {
+            "max_attempts": 5,
+            "base_delay": 2.0,
+            "max_delay": 120.0,
+            "backoff_multiplier": 2.0,
+            "strategy": "adaptive",
+            "jitter_type": "decorrelated",
+            "timeout_multiplier": 1.5,
+            "circuit_breaker_integration": true,
+            "connection_error_max_attempts": 7,
+            "timeout_error_max_attempts": 3,
+            "server_error_max_attempts": 2,
+            "success_threshold_for_reduction": 3,
+            "failure_threshold_for_increase": 2
+        },
         "cost_tracking": {
             "prompt_token_cost": 0.003,
             "response_token_cost": 0.015
+        },
+        "batch_processing": {
+            "max_concurrent": 15,
+            "batch_size": 100,
+            "retry_attempts": 5,
+            "retry_delay": 2.0,
+            "timeout_per_request": 60.0,
+            "enable_by_default": true
+        },
+        "circuit_breaker": {
+            "enabled": true,
+            "failure_threshold": 3,
+            "recovery_timeout": 60.0,
+            "half_open_max_calls": 2,
+            "success_threshold": 2,
+            "monitoring_window": 120.0,
+            "minimum_throughput": 5
         }
     }
 }

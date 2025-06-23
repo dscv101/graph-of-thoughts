@@ -153,7 +153,7 @@ def run_mcp(
     return orig_budget - budget
 
 
-def demo_mcp_connection():
+def demo_mcp_connection() -> None:
     """
     Demonstrate basic MCP connection and usage.
     """

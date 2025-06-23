@@ -7,9 +7,10 @@
 # main author: Nils Blach
 
 from __future__ import annotations
+import asyncio
 import logging
 from enum import Enum
-from typing import List, Iterator, Dict, Callable, Union
+from typing import List, Iterator, Dict, Callable, Union, Optional
 from abc import ABC, abstractmethod
 import itertools
 
@@ -33,6 +34,9 @@ class OperationType(Enum):
     keep_valid: int = 6
     ground_truth_evaluator: int = 7
     selector: int = 8
+    batch_generate: int = 9
+    batch_score: int = 10
+    batch_aggregate: int = 11
 
 
 class Operation(ABC):
@@ -898,3 +902,785 @@ class Selector(Operation):
         self.logger.info(
             "Selector operation %d selected %d thoughts", self.id, len(self.thoughts)
         )
+
+
+class BatchGenerate(Operation):
+    """
+    Batch-aware operation to generate thoughts efficiently using concurrent processing.
+
+    This operation optimizes the generation process by:
+    - Processing multiple thoughts concurrently
+    - Using batch processing for language model queries
+    - Implementing configurable concurrency limits
+    - Providing enhanced error handling and retry logic
+    """
+
+    operation_type: OperationType = OperationType.batch_generate
+
+    def __init__(
+        self,
+        num_branches_prompt: int = 1,
+        num_branches_response: int = 1,
+        max_concurrent: Optional[int] = None,
+        batch_size: Optional[int] = None,
+        enable_batch_processing: bool = True
+    ) -> None:
+        """
+        Initializes a new BatchGenerate operation.
+
+        :param num_branches_prompt: Number of responses that each prompt should generate. Defaults to 1.
+        :type num_branches_prompt: int
+        :param num_branches_response: Number of responses the LM should generate for each prompt. Defaults to 1.
+        :type num_branches_response: int
+        :param max_concurrent: Maximum number of concurrent requests. Uses LM default if None.
+        :type max_concurrent: Optional[int]
+        :param batch_size: Maximum batch size for processing. Uses LM default if None.
+        :type batch_size: Optional[int]
+        :param enable_batch_processing: Whether to use batch processing optimizations. Defaults to True.
+        :type enable_batch_processing: bool
+        """
+        super().__init__()
+        self.num_branches_prompt: int = num_branches_prompt
+        self.num_branches_response: int = num_branches_response
+        self.max_concurrent: Optional[int] = max_concurrent
+        self.batch_size: Optional[int] = batch_size
+        self.enable_batch_processing: bool = enable_batch_processing
+        self.thoughts: List[Thought] = []
+
+    def get_thoughts(self) -> List[Thought]:
+        """
+        Returns the thoughts associated with the operation.
+
+        :return: List of generated thoughts.
+        :rtype: List[Thought]
+        """
+        return self.thoughts
+
+    def _execute(
+        self, lm: AbstractLanguageModel, prompter: Prompter, parser: Parser, **kwargs
+    ) -> None:
+        """
+        Executes the BatchGenerate operation using efficient batch processing.
+
+        :param lm: The language model to be used.
+        :type lm: AbstractLanguageModel
+        :param prompter: The prompter for crafting prompts.
+        :type prompter: Prompter
+        :param parser: The parser for parsing responses.
+        :type parser: Parser
+        :param kwargs: Additional parameters for execution.
+        """
+        previous_thoughts: List[Thought] = self.get_previous_thoughts()
+
+        if len(previous_thoughts) == 0 and len(self.predecessors) > 0:
+            return
+
+        if len(previous_thoughts) == 0:
+            # no predecessors, use kwargs as base state
+            previous_thoughts = [Thought(state=kwargs)]
+
+        # Check if the language model supports batch processing
+        if (self.enable_batch_processing and
+            hasattr(lm, 'query_batch') and
+            len(previous_thoughts) > 1):
+            self._execute_batch(lm, prompter, parser, previous_thoughts)
+        else:
+            self._execute_sequential(lm, prompter, parser, previous_thoughts)
+
+        if (
+            len(self.thoughts)
+            > self.num_branches_prompt
+            * self.num_branches_response
+            * len(previous_thoughts)
+            and self.num_branches_prompt > 0
+        ):
+            self.logger.warning(
+                "BatchGenerate operation %d created more thoughts than expected",
+                self.id,
+            )
+        self.logger.info(
+            "BatchGenerate operation %d created %d new thoughts", self.id, len(self.thoughts)
+        )
+
+    def _execute_batch(
+        self,
+        lm: AbstractLanguageModel,
+        prompter: Prompter,
+        parser: Parser,
+        previous_thoughts: List[Thought]
+    ) -> None:
+        """
+        Execute generation using batch processing for improved performance.
+
+        :param lm: The language model to be used.
+        :type lm: AbstractLanguageModel
+        :param prompter: The prompter for crafting prompts.
+        :type prompter: Prompter
+        :param parser: The parser for parsing responses.
+        :type parser: Parser
+        :param previous_thoughts: List of thoughts to process.
+        :type previous_thoughts: List[Thought]
+        """
+        self.logger.info(f"Using batch processing for {len(previous_thoughts)} thoughts")
+
+        # Prepare all prompts for batch processing
+        prompts = []
+        thought_prompt_mapping = []  # Track which prompt belongs to which thought
+
+        for thought_idx, thought in enumerate(previous_thoughts):
+            base_state = thought.state
+            for _ in range(self.num_branches_response):
+                prompt = prompter.generate_prompt(self.num_branches_prompt, **base_state)
+                prompts.append(prompt)
+                thought_prompt_mapping.append((thought_idx, thought, base_state))
+
+        self.logger.debug(f"Prepared {len(prompts)} prompts for batch processing")
+
+        # Use optimized async execution for batch processing
+        responses = self._run_async_batch_safely(lm, prompts)
+
+        # Process responses and create thoughts
+        for i, (response, (thought_idx, original_thought, base_state)) in enumerate(
+            zip(responses, thought_prompt_mapping)
+        ):
+            try:
+                # Extract text from response
+                response_texts = lm.get_response_texts([response])
+                self.logger.debug(f"Response {i}: {response_texts}")
+
+                # Parse the response
+                for new_state in parser.parse_generate_answer(base_state, response_texts):
+                    new_state = {**base_state, **new_state}
+                    self.thoughts.append(Thought(new_state))
+                    self.logger.debug(
+                        "New thought %d created with state %s",
+                        self.thoughts[-1].id,
+                        self.thoughts[-1].state,
+                    )
+            except Exception as e:
+                self.logger.error(f"Error processing response {i}: {e}")
+                # Create a fallback thought with error information
+                error_state = {**base_state, "error": str(e), "batch_processing_failed": True}
+                self.thoughts.append(Thought(error_state))
+
+    def _run_async_batch_safely(self, lm: AbstractLanguageModel, prompts: List[str]) -> List[Dict]:
+        """
+        Safely run batch processing with optimized event loop management.
+
+        :param lm: The language model to be used.
+        :type lm: AbstractLanguageModel
+        :param prompts: List of prompts to process.
+        :type prompts: List[str]
+        :return: List of responses.
+        :rtype: List[Dict]
+        :raises RuntimeError: If called from within an async context
+        """
+        async def _run_batch():
+            return await self._run_batch_async(lm, prompts)
+
+        # Check if we're already in an async context
+        try:
+            asyncio.get_running_loop()
+            # If we reach here, we're in an async context
+            raise RuntimeError(
+                "Cannot call _run_async_batch_safely from within an async context. "
+                "Use 'await _run_batch_async()' instead or call from a synchronous context."
+            )
+        except RuntimeError as e:
+            if "no running event loop" in str(e).lower():
+                # No event loop running, safe to use asyncio.run
+                return asyncio.run(_run_batch())
+            else:
+                # Re-raise the error about being in async context
+                raise
+
+    async def _run_batch_async(self, lm: AbstractLanguageModel, prompts: List[str]) -> List[Dict]:
+        """
+        Run batch processing asynchronously.
+
+        :param lm: The language model to be used.
+        :type lm: AbstractLanguageModel
+        :param prompts: List of prompts to process.
+        :type prompts: List[str]
+        :return: List of responses.
+        :rtype: List[Dict]
+        """
+        async with lm:  # Use async context manager
+            return await lm.query_batch(
+                prompts,
+                max_concurrent=self.max_concurrent,
+                batch_size=self.batch_size
+            )
+
+    def _execute_sequential(
+        self,
+        lm: AbstractLanguageModel,
+        prompter: Prompter,
+        parser: Parser,
+        previous_thoughts: List[Thought]
+    ) -> None:
+        """
+        Execute generation using sequential processing (fallback method).
+
+        :param lm: The language model to be used.
+        :type lm: AbstractLanguageModel
+        :param prompter: The prompter for crafting prompts.
+        :type prompter: Prompter
+        :param parser: The parser for parsing responses.
+        :type parser: Parser
+        :param previous_thoughts: List of thoughts to process.
+        :type previous_thoughts: List[Thought]
+        """
+        self.logger.info(f"Using sequential processing for {len(previous_thoughts)} thoughts")
+
+        for thought in previous_thoughts:
+            base_state = thought.state
+            prompt = prompter.generate_prompt(self.num_branches_prompt, **base_state)
+            self.logger.debug("Prompt for LM: %s", prompt)
+            responses = lm.get_response_texts(
+                lm.query(prompt, num_responses=self.num_branches_response)
+            )
+            self.logger.debug("Responses from LM: %s", responses)
+            for new_state in parser.parse_generate_answer(base_state, responses):
+                new_state = {**base_state, **new_state}
+                self.thoughts.append(Thought(new_state))
+                self.logger.debug(
+                    "New thought %d created with state %s",
+                    self.thoughts[-1].id,
+                    self.thoughts[-1].state,
+                )
+
+
+class BatchScore(Operation):
+    """
+    Batch-aware operation to score thoughts efficiently using concurrent processing.
+
+    This operation optimizes the scoring process by:
+    - Processing multiple thoughts concurrently
+    - Using batch processing for language model queries
+    - Supporting both individual and combined scoring modes
+    - Implementing configurable concurrency limits
+    """
+
+    operation_type: OperationType = OperationType.batch_score
+
+    def __init__(
+        self,
+        num_samples: int = 1,
+        combined_scoring: bool = False,
+        scoring_function: Callable[
+            [Union[List[Dict], Dict]], Union[List[float], float]
+        ] = None,
+        max_concurrent: Optional[int] = None,
+        batch_size: Optional[int] = None,
+        enable_batch_processing: bool = True
+    ) -> None:
+        """
+        Initializes a new BatchScore operation.
+
+        :param num_samples: Number of samples to use for scoring. Defaults to 1.
+        :type num_samples: int
+        :param combined_scoring: Whether to score all thoughts together or individually. Defaults to False.
+        :type combined_scoring: bool
+        :param scoring_function: A function to score thoughts (if not using LM). Defaults to None.
+        :type scoring_function: Takes a list of thought states or a single thought state and
+                                returns a list of scores or a single score.
+        :param max_concurrent: Maximum number of concurrent requests. Uses LM default if None.
+        :type max_concurrent: Optional[int]
+        :param batch_size: Maximum batch size for processing. Uses LM default if None.
+        :type batch_size: Optional[int]
+        :param enable_batch_processing: Whether to use batch processing optimizations. Defaults to True.
+        :type enable_batch_processing: bool
+        """
+        super().__init__()
+        self.num_samples: int = num_samples
+        self.combined_scoring: bool = combined_scoring
+        self.scoring_function: Callable[
+            [Union[List[Dict], Dict]], Union[List[float], float]
+        ] = scoring_function
+        self.max_concurrent: Optional[int] = max_concurrent
+        self.batch_size: Optional[int] = batch_size
+        self.enable_batch_processing: bool = enable_batch_processing
+        self.thoughts: List[Thought] = []
+
+    def get_thoughts(self) -> List[Thought]:
+        """
+        Returns the thoughts associated with the operation.
+
+        :return: List of scored thoughts.
+        :rtype: List[Thought]
+        """
+        return self.thoughts
+
+    def _execute(
+        self, lm: AbstractLanguageModel, prompter: Prompter, parser: Parser, **kwargs
+    ) -> None:
+        """
+        Executes the BatchScore operation using efficient batch processing.
+
+        :param lm: The language model to be used.
+        :type lm: AbstractLanguageModel
+        :param prompter: The prompter for crafting prompts.
+        :type prompter: Prompter
+        :param parser: The parser for parsing responses.
+        :type parser: Parser
+        :param kwargs: Additional parameters for execution.
+        :raises AssertionError: If operation has no predecessors.
+        """
+        previous_thoughts: List[Thought] = self.get_previous_thoughts()
+
+        assert (
+            len(self.predecessors) > 0
+        ), "BatchScore operation needs at least one predecessor"
+
+        if self.combined_scoring:
+            self._execute_combined_scoring(lm, prompter, parser, previous_thoughts)
+        else:
+            # Check if the language model supports batch processing
+            if (self.enable_batch_processing and
+                hasattr(lm, 'query_batch') and
+                len(previous_thoughts) > 1 and
+                self.scoring_function is None):  # Only use batch for LM scoring
+                self._execute_batch_scoring(lm, prompter, parser, previous_thoughts)
+            else:
+                self._execute_sequential_scoring(lm, prompter, parser, previous_thoughts)
+
+        self.logger.info(
+            "BatchScore operation %d scored %d thoughts",
+            self.id,
+            len(self.thoughts),
+        )
+
+    def _execute_combined_scoring(
+        self,
+        lm: AbstractLanguageModel,
+        prompter: Prompter,
+        parser: Parser,
+        previous_thoughts: List[Thought]
+    ) -> None:
+        """
+        Execute combined scoring for all thoughts together.
+
+        :param lm: The language model to be used.
+        :type lm: AbstractLanguageModel
+        :param prompter: The prompter for crafting prompts.
+        :type prompter: Prompter
+        :param parser: The parser for parsing responses.
+        :type parser: Parser
+        :param previous_thoughts: List of thoughts to score.
+        :type previous_thoughts: List[Thought]
+        """
+        previous_thoughts_states = [thought.state for thought in previous_thoughts]
+        if self.scoring_function is not None:
+            self.logger.debug(
+                "Using scoring function %s to score states", self.scoring_function
+            )
+            scores = self.scoring_function(previous_thoughts_states)
+        else:
+            prompt = prompter.score_prompt(previous_thoughts_states)
+            self.logger.debug("Prompt for LM: %s", prompt)
+
+            responses = lm.get_response_texts(
+                lm.query(prompt, num_responses=self.num_samples)
+            )
+            self.logger.debug("Responses from LM: %s", responses)
+            scores = parser.parse_score_answer(previous_thoughts_states, responses)
+
+        for thought, score in zip(previous_thoughts, scores):
+            new_thought = Thought.from_thought(thought)
+            new_thought.score = score
+            self.thoughts.append(new_thought)
+
+    def _execute_batch_scoring(
+        self,
+        lm: AbstractLanguageModel,
+        prompter: Prompter,
+        parser: Parser,
+        previous_thoughts: List[Thought]
+    ) -> None:
+        """
+        Execute scoring using batch processing for improved performance.
+
+        :param lm: The language model to be used.
+        :type lm: AbstractLanguageModel
+        :param prompter: The prompter for crafting prompts.
+        :type prompter: Prompter
+        :param parser: The parser for parsing responses.
+        :type parser: Parser
+        :param previous_thoughts: List of thoughts to score.
+        :type previous_thoughts: List[Thought]
+        """
+        self.logger.info(f"Using batch scoring for {len(previous_thoughts)} thoughts")
+
+        # Prepare all prompts for batch processing
+        prompts = []
+        thought_mapping = []  # Track which prompt belongs to which thought
+
+        for thought in previous_thoughts:
+            for _ in range(self.num_samples):
+                prompt = prompter.score_prompt([thought.state])
+                prompts.append(prompt)
+                thought_mapping.append(thought)
+
+        self.logger.debug(f"Prepared {len(prompts)} scoring prompts for batch processing")
+
+        # Use optimized async execution for batch processing
+        responses = self._run_async_batch_safely(lm, prompts)
+
+        # Process responses and assign scores
+        for i in range(0, len(responses), self.num_samples):
+            thought = thought_mapping[i]
+            thought_responses = responses[i:i + self.num_samples]
+
+            try:
+                # Extract text from responses
+                response_texts = []
+                for response in thought_responses:
+                    response_texts.extend(lm.get_response_texts([response]))
+
+                self.logger.debug(f"Scoring responses for thought {thought.id}: {response_texts}")
+
+                # Parse the score
+                score = parser.parse_score_answer([thought.state], response_texts)[0]
+
+                new_thought = Thought.from_thought(thought)
+                new_thought.score = score
+                self.thoughts.append(new_thought)
+
+            except Exception as e:
+                self.logger.error(f"Error processing score for thought {thought.id}: {e}")
+                # Create a fallback thought with default score
+                new_thought = Thought.from_thought(thought)
+                new_thought.score = 0.0  # Default score for failed scoring
+                self.thoughts.append(new_thought)
+
+    def _run_async_batch_safely(self, lm: AbstractLanguageModel, prompts: List[str]) -> List[Dict]:
+        """
+        Safely run batch processing with optimized event loop management.
+
+        :param lm: The language model to be used.
+        :type lm: AbstractLanguageModel
+        :param prompts: List of prompts to process.
+        :type prompts: List[str]
+        :return: List of responses.
+        :rtype: List[Dict]
+        :raises RuntimeError: If called from within an async context
+        """
+        async def _run_batch():
+            return await self._run_batch_async(lm, prompts)
+
+        # Check if we're already in an async context
+        try:
+            asyncio.get_running_loop()
+            # If we reach here, we're in an async context
+            raise RuntimeError(
+                "Cannot call _run_async_batch_safely from within an async context. "
+                "Use 'await _run_batch_async()' instead or call from a synchronous context."
+            )
+        except RuntimeError as e:
+            if "no running event loop" in str(e).lower():
+                # No event loop running, safe to use asyncio.run
+                return asyncio.run(_run_batch())
+            else:
+                # Re-raise the error about being in async context
+                raise
+
+    async def _run_batch_async(self, lm: AbstractLanguageModel, prompts: List[str]) -> List[Dict]:
+        """
+        Run batch processing asynchronously for scoring.
+
+        :param lm: The language model to be used.
+        :type lm: AbstractLanguageModel
+        :param prompts: List of prompts to process.
+        :type prompts: List[str]
+        :return: List of responses.
+        :rtype: List[Dict]
+        """
+        async with lm:  # Use async context manager
+            return await lm.query_batch(
+                prompts,
+                max_concurrent=self.max_concurrent,
+                batch_size=self.batch_size
+            )
+
+    def _execute_sequential_scoring(
+        self,
+        lm: AbstractLanguageModel,
+        prompter: Prompter,
+        parser: Parser,
+        previous_thoughts: List[Thought]
+    ) -> None:
+        """
+        Execute scoring using sequential processing (fallback method).
+
+        :param lm: The language model to be used.
+        :type lm: AbstractLanguageModel
+        :param prompter: The prompter for crafting prompts.
+        :type prompter: Prompter
+        :param parser: The parser for parsing responses.
+        :type parser: Parser
+        :param previous_thoughts: List of thoughts to score.
+        :type previous_thoughts: List[Thought]
+        """
+        self.logger.info(f"Using sequential scoring for {len(previous_thoughts)} thoughts")
+
+        for thought in previous_thoughts:
+            new_thought = Thought.from_thought(thought)
+            if self.scoring_function is not None:
+                self.logger.debug(
+                    "Using scoring function %s to score state",
+                    self.scoring_function,
+                )
+                score = self.scoring_function(thought.state)
+            else:
+                prompt = prompter.score_prompt([thought.state])
+                self.logger.debug("Prompt for LM: %s", prompt)
+
+                responses = lm.get_response_texts(
+                    lm.query(prompt, num_responses=self.num_samples)
+                )
+                self.logger.debug("Responses from LM: %s", responses)
+                score = parser.parse_score_answer([thought.state], responses)[0]
+
+            new_thought.score = score
+            self.thoughts.append(new_thought)
+
+
+class BatchAggregate(Operation):
+    """
+    Batch-aware operation to aggregate thoughts efficiently using concurrent processing.
+
+    This operation optimizes the aggregation process by:
+    - Processing multiple aggregation requests concurrently
+    - Using batch processing for language model queries
+    - Supporting multiple response generation for better results
+    - Implementing configurable concurrency limits
+    """
+
+    operation_type: OperationType = OperationType.batch_aggregate
+
+    def __init__(
+        self,
+        num_responses: int = 1,
+        max_concurrent: Optional[int] = None,
+        batch_size: Optional[int] = None,
+        enable_batch_processing: bool = True
+    ) -> None:
+        """
+        Initializes a new BatchAggregate operation.
+
+        :param num_responses: Number of responses to use for aggregation. Defaults to 1.
+        :type num_responses: int
+        :param max_concurrent: Maximum number of concurrent requests. Uses LM default if None.
+        :type max_concurrent: Optional[int]
+        :param batch_size: Maximum batch size for processing. Uses LM default if None.
+        :type batch_size: Optional[int]
+        :param enable_batch_processing: Whether to use batch processing optimizations. Defaults to True.
+        :type enable_batch_processing: bool
+        """
+        super().__init__()
+        self.num_responses: int = num_responses
+        self.max_concurrent: Optional[int] = max_concurrent
+        self.batch_size: Optional[int] = batch_size
+        self.enable_batch_processing: bool = enable_batch_processing
+        self.thoughts: List[Thought] = []
+
+    def get_thoughts(self) -> List[Thought]:
+        """
+        Returns the thoughts associated with the operation after aggregation.
+
+        :return: List of aggregated thoughts.
+        :rtype: List[Thought]
+        """
+        return self.thoughts
+
+    def _execute(
+        self, lm: AbstractLanguageModel, prompter: Prompter, parser: Parser, **kwargs
+    ) -> None:
+        """
+        Executes the BatchAggregate operation using efficient batch processing.
+
+        :param lm: The language model to be used.
+        :type lm: AbstractLanguageModel
+        :param prompter: The prompter for crafting prompts.
+        :type prompter: Prompter
+        :param parser: The parser for parsing responses.
+        :type parser: Parser
+        :param kwargs: Additional parameters for execution.
+        :raises AssertionError: If operation has no predecessors.
+        """
+        assert (
+            len(self.predecessors) >= 1
+        ), "BatchAggregate operation must have at least one predecessor"
+
+        previous_thoughts: List[Thought] = self.get_previous_thoughts()
+
+        if len(previous_thoughts) == 0:
+            return
+
+        # applied in order of score
+        base_state: Dict = {}
+        for thought in sorted(previous_thoughts, key=lambda thought: thought.score):
+            base_state = {**base_state, **thought.state}
+
+        previous_thought_states = [thought.state for thought in previous_thoughts]
+
+        # Check if the language model supports batch processing and we have multiple responses
+        if (self.enable_batch_processing and
+            hasattr(lm, 'query_batch') and
+            self.num_responses > 1):
+            self._execute_batch_aggregation(lm, prompter, parser, previous_thought_states, base_state)
+        else:
+            self._execute_sequential_aggregation(lm, prompter, parser, previous_thought_states, base_state)
+
+        self.logger.info(
+            "BatchAggregate operation %d created %d aggregated thoughts",
+            self.id,
+            len(self.thoughts),
+        )
+
+    def _execute_batch_aggregation(
+        self,
+        lm: AbstractLanguageModel,
+        prompter: Prompter,
+        parser: Parser,
+        previous_thought_states: List[Dict],
+        base_state: Dict
+    ) -> None:
+        """
+        Execute aggregation using batch processing for improved performance.
+
+        :param lm: The language model to be used.
+        :type lm: AbstractLanguageModel
+        :param prompter: The prompter for crafting prompts.
+        :type prompter: Prompter
+        :param parser: The parser for parsing responses.
+        :type parser: Parser
+        :param previous_thought_states: List of thought states to aggregate.
+        :type previous_thought_states: List[Dict]
+        :param base_state: Base state for new thoughts.
+        :type base_state: Dict
+        """
+        self.logger.info(f"Using batch aggregation for {self.num_responses} responses")
+
+        # Prepare prompts for batch processing
+        prompt = prompter.aggregation_prompt(previous_thought_states)
+        prompts = [prompt] * self.num_responses
+
+        self.logger.debug(f"Prepared {len(prompts)} aggregation prompts for batch processing")
+
+        # Use optimized async execution for batch processing
+        responses = self._run_async_batch_safely(lm, prompts)
+
+        # Process responses and create aggregated thoughts
+        response_texts = []
+        for response in responses:
+            try:
+                response_texts.extend(lm.get_response_texts([response]))
+            except Exception as e:
+                self.logger.error(f"Error extracting text from aggregation response: {e}")
+                response_texts.append(f"Error: {str(e)}")
+
+        self.logger.debug("Aggregation responses from LM: %s", response_texts)
+
+        try:
+            parsed = parser.parse_aggregation_answer(previous_thought_states, response_texts)
+
+            if isinstance(parsed, dict):
+                parsed = [parsed]
+            for new_state in parsed:
+                self.thoughts.append(Thought({**base_state, **new_state}))
+        except Exception as e:
+            self.logger.error(f"Error parsing aggregation responses: {e}")
+            # Create a fallback aggregated thought
+            fallback_state = {**base_state, "aggregation_error": str(e), "batch_processing_failed": True}
+            self.thoughts.append(Thought(fallback_state))
+
+    def _run_async_batch_safely(self, lm: AbstractLanguageModel, prompts: List[str]) -> List[Dict]:
+        """
+        Safely run batch processing with optimized event loop management.
+
+        :param lm: The language model to be used.
+        :type lm: AbstractLanguageModel
+        :param prompts: List of prompts to process.
+        :type prompts: List[str]
+        :return: List of responses.
+        :rtype: List[Dict]
+        :raises RuntimeError: If called from within an async context
+        """
+        async def _run_batch():
+            return await self._run_batch_async(lm, prompts)
+
+        # Check if we're already in an async context
+        try:
+            asyncio.get_running_loop()
+            # If we reach here, we're in an async context
+            raise RuntimeError(
+                "Cannot call _run_async_batch_safely from within an async context. "
+                "Use 'await _run_batch_async()' instead or call from a synchronous context."
+            )
+        except RuntimeError as e:
+            if "no running event loop" in str(e).lower():
+                # No event loop running, safe to use asyncio.run
+                return asyncio.run(_run_batch())
+            else:
+                # Re-raise the error about being in async context
+                raise
+
+    async def _run_batch_async(self, lm: AbstractLanguageModel, prompts: List[str]) -> List[Dict]:
+        """
+        Run batch processing asynchronously for aggregation.
+
+        :param lm: The language model to be used.
+        :type lm: AbstractLanguageModel
+        :param prompts: List of prompts to process.
+        :type prompts: List[str]
+        :return: List of responses.
+        :rtype: List[Dict]
+        """
+        async with lm:  # Use async context manager
+            return await lm.query_batch(
+                prompts,
+                max_concurrent=self.max_concurrent,
+                batch_size=self.batch_size
+            )
+
+    def _execute_sequential_aggregation(
+        self,
+        lm: AbstractLanguageModel,
+        prompter: Prompter,
+        parser: Parser,
+        previous_thought_states: List[Dict],
+        base_state: Dict
+    ) -> None:
+        """
+        Execute aggregation using sequential processing (fallback method).
+
+        :param lm: The language model to be used.
+        :type lm: AbstractLanguageModel
+        :param prompter: The prompter for crafting prompts.
+        :type prompter: Prompter
+        :param parser: The parser for parsing responses.
+        :type parser: Parser
+        :param previous_thought_states: List of thought states to aggregate.
+        :type previous_thought_states: List[Dict]
+        :param base_state: Base state for new thoughts.
+        :type base_state: Dict
+        """
+        self.logger.info(f"Using sequential aggregation for {self.num_responses} responses")
+
+        prompt = prompter.aggregation_prompt(previous_thought_states)
+        self.logger.debug("Prompt for LM: %s", prompt)
+
+        responses = lm.get_response_texts(
+            lm.query(prompt, num_responses=self.num_responses)
+        )
+
+        self.logger.debug("Responses from LM: %s", responses)
+
+        parsed = parser.parse_aggregation_answer(previous_thought_states, responses)
+
+        if isinstance(parsed, dict):
+            parsed = [parsed]
+        for new_state in parsed:
+            self.thoughts.append(Thought({**base_state, **new_state}))
