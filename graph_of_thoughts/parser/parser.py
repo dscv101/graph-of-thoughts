@@ -6,11 +6,8 @@
 #
 # main authors: Robert Gerstenberger, Nils Blach
 
-from __future__ import annotations
-
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional, Union
 
 
 class Parser(ABC):
@@ -21,73 +18,73 @@ class Parser(ABC):
 
     @abstractmethod
     def parse_aggregation_answer(
-        self, states: [], texts: [str]
-    ) -> Union[, []]:
+        self, states: list[dict], texts: list[str]
+    ) -> dict | list[dict]:
         """
         Parse the response from the language model for a aggregation prompt.
 
         :param states: The thought states used to generate the prompt.
-        :type states: []
+        :type states: list[dict]
         :param texts: The responses to the prompt from the language model.
-        :type texts: [str]
+        :type texts: list[str]
         :return: The new thought states after parsing the response from the language model.
-        :rtype: Union[, []]
+        :rtype: dict | list[dict]
         """
         pass
 
     @abstractmethod
-    def parse_improve_answer(self, state: , texts: [str]) -> :
+    def parse_improve_answer(self, state: dict, texts: list[str]) -> dict:
         """
         Parse the response from the language model for an improve prompt.
 
         :param state: The thought state used to generate the prompt.
-        :type state: 
+        :type state: dict
         :param texts: The responses to the prompt from the language model.
-        :type texts: [str]
+        :type texts: list[str]
         :return: The new thought state after parsing the response from the language model.
-        :rtype: 
+        :rtype: dict
         """
         pass
 
     @abstractmethod
-    def parse_generate_answer(self, state: , texts: [str]) -> []:
+    def parse_generate_answer(self, state: dict, texts: list[str]) -> list[dict]:
         """
         Parse the response from the language model for a generate prompt.
 
         :param state: The thought state used to generate the prompt.
-        :type state: 
+        :type state: dict
         :param texts: The responses to the prompt from the language model.
-        :type texts: [str]
+        :type texts: list[str]
         :return: The new thought states after parsing the response from the language model.
-        :rtype: []
+        :rtype: list[dict]
         """
         pass
 
     @abstractmethod
-    def parse_validation_answer(self, state: , texts: [str]) -> bool:
+    def parse_validation_answer(self, state: dict, texts: list[str]) -> bool:
         """
         Parse the response from the language model for a validation prompt.
 
         :param state: The thought state used to generate the prompt.
-        :type state: 
+        :type state: dict
         :param texts: The responses to the prompt from the language model.
-        :type texts: [str]
+        :type texts: list[str]
         :return: Whether the thought state is valid or not.
         :rtype: bool
         """
         pass
 
     @abstractmethod
-    def parse_score_answer(self, states: [], texts: [str]) -> [float]:
+    def parse_score_answer(self, states: list[dict], texts: list[str]) -> list[float]:
         """
         Parse the response from the language model for a score prompt.
 
         :param states: The thought states used to generate the prompt.
-        :type states: []
+        :type states: list[dict]
         :param texts: The responses to the prompt from the language model.
-        :type texts: [str]
+        :type texts: list[str]
         :return: The scores for the thought states.
-        :rtype: [float]
+        :rtype: list[float]
         """
         pass
 
@@ -117,22 +114,22 @@ class BatchParser(Parser):
     def parse_batch_responses(
         self,
         parse_method: str,
-        states: [],
-        batch_texts: [[str]],
+        states: list[dict],
+        batch_texts: list[list[str]],
         **kwargs,
-    ) -> [[Union[, [], float, bool]], [Optional[Exception]]]:
+    ) -> tuple[list[dict | list[dict] | float | bool], list[Exception | None]]:
         """
         Parse multiple responses using the specified parsing method with batch processing.
 
         :param parse_method: Name of the parsing method to use
         :type parse_method: str
-        :param states:  of thought states corresponding to each batch
-        :type states: []
-        :param batch_texts:  of text responses for each state
-        :type batch_texts: [[str]]
+        :param states: List of thought states corresponding to each batch
+        :type states: list[dict]
+        :param batch_texts: List of text responses for each state
+        :type batch_texts: list[list[str]]
         :param kwargs: Additional arguments for the parsing method
-        :return:  of (parsed_results, errors)
-        :rtype: [[Union[, [], float, bool]], [Optional[Exception]]]
+        :return: Tuple of (parsed_results, errors)
+        :rtype: tuple[list[dict | list[dict] | float | bool], list[Exception | None]]
         """
         results = []
         errors = []
@@ -188,94 +185,94 @@ class BatchParser(Parser):
         return results, errors
 
     def parse_batch_generate_answers(
-        self, states: [], batch_texts: [[str]]
-    ) -> [[[]], [Optional[Exception]]]:
+        self, states: list[dict], batch_texts: list[list[str]]
+    ) -> tuple[list[list[dict]], list[Exception | None]]:
         """
         Parse multiple generate responses in batch.
 
-        :param states:  of thought states
-        :type states: []
-        :param batch_texts:  of text responses for each state
-        :type batch_texts: [[str]]
-        :return:  of (list of generated states for each input, errors)
-        :rtype: [[[]], [Optional[Exception]]]
+        :param states: List of thought states
+        :type states: list[dict]
+        :param batch_texts: List of text responses for each state
+        :type batch_texts: list[list[str]]
+        :return: Tuple of (list of generated states for each input, errors)
+        :rtype: tuple[list[list[dict]], list[Exception | None]]
         """
         return self.parse_batch_responses("parse_generate_answer", states, batch_texts)
 
     def parse_batch_score_answers(
-        self, states: [], batch_texts: [[str]]
-    ) -> [[float], [Optional[Exception]]]:
+        self, states: list[dict], batch_texts: list[list[str]]
+    ) -> tuple[list[float], list[Exception | None]]:
         """
         Parse multiple score responses in batch.
 
-        :param states:  of thought states
-        :type states: []
-        :param batch_texts:  of text responses for each state
-        :type batch_texts: [[str]]
-        :return:  of (list of scores, errors)
-        :rtype: [[float], [Optional[Exception]]]
+        :param states: List of thought states
+        :type states: list[dict]
+        :param batch_texts: List of text responses for each state
+        :type batch_texts: list[list[str]]
+        :return: Tuple of (list of scores, errors)
+        :rtype: tuple[list[float], list[Exception | None]]
         """
         return self.parse_batch_responses("parse_score_answer", states, batch_texts)
 
     def parse_batch_aggregation_answers(
-        self, states: [], batch_texts: [[str]]
-    ) -> [[Union[, []]], [Optional[Exception]]]:
+        self, states: list[dict], batch_texts: list[list[str]]
+    ) -> tuple[list[dict | list[dict]], list[Exception | None]]:
         """
         Parse multiple aggregation responses in batch.
 
-        :param states:  of thought states
-        :type states: []
-        :param batch_texts:  of text responses for each state
-        :type batch_texts: [[str]]
-        :return:  of (list of aggregated states, errors)
-        :rtype: [[Union[, []]], [Optional[Exception]]]
+        :param states: List of thought states
+        :type states: list[dict]
+        :param batch_texts: List of text responses for each state
+        :type batch_texts: list[list[str]]
+        :return: Tuple of (list of aggregated states, errors)
+        :rtype: tuple[list[dict | list[dict]], list[Exception | None]]
         """
         return self.parse_batch_responses(
             "parse_aggregation_answer", states, batch_texts
         )
 
     def parse_batch_improve_answers(
-        self, states: [], batch_texts: [[str]]
-    ) -> [[], [Optional[Exception]]]:
+        self, states: list[dict], batch_texts: list[list[str]]
+    ) -> tuple[list[dict], list[Exception | None]]:
         """
         Parse multiple improve responses in batch.
 
-        :param states:  of thought states
-        :type states: []
-        :param batch_texts:  of text responses for each state
-        :type batch_texts: [[str]]
-        :return:  of (list of improved states, errors)
-        :rtype: [[], [Optional[Exception]]]
+        :param states: List of thought states
+        :type states: list[dict]
+        :param batch_texts: List of text responses for each state
+        :type batch_texts: list[list[str]]
+        :return: Tuple of (list of improved states, errors)
+        :rtype: tuple[list[dict], list[Exception | None]]
         """
         return self.parse_batch_responses("parse_improve_answer", states, batch_texts)
 
     def parse_batch_validation_answers(
-        self, states: [], batch_texts: [[str]]
-    ) -> [[bool], [Optional[Exception]]]:
+        self, states: list[dict], batch_texts: list[list[str]]
+    ) -> tuple[list[bool], list[Exception | None]]:
         """
         Parse multiple validation responses in batch.
 
-        :param states:  of thought states
-        :type states: []
-        :param batch_texts:  of text responses for each state
-        :type batch_texts: [[str]]
-        :return:  of (list of validation results, errors)
-        :rtype: [[bool], [Optional[Exception]]]
+        :param states: List of thought states
+        :type states: list[dict]
+        :param batch_texts: List of text responses for each state
+        :type batch_texts: list[list[str]]
+        :return: Tuple of (list of validation results, errors)
+        :rtype: tuple[list[bool], list[Exception | None]]
         """
         return self.parse_batch_responses(
             "parse_validation_answer", states, batch_texts
         )
 
     def get_batch_statistics(
-        self, errors: [Optional[Exception]]
-    ) -> [str, Union[int, float]]:
+        self, errors: list[Exception | None]
+    ) -> dict[str, int | float]:
         """
         Get statistics about batch processing results.
 
-        :param errors:  of errors from batch processing
-        :type errors: [Optional[Exception]]
-        :return: ionary with statistics
-        :rtype: [str, Union[int, float]]
+        :param errors: List of errors from batch processing
+        :type errors: list[Exception | None]
+        :return: Dictionary with statistics
+        :rtype: dict[str, int | float]
         """
         total_items = len(errors)
         error_count = sum(1 for error in errors if error is not None)

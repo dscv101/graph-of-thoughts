@@ -9,10 +9,10 @@
 #
 # main author: Robert Gerstenberger
 
-from typing import Dict, List, Set
+# Type annotations use built-in types for Python 3.12+ compatibility
 
 
-def string_to_list(string: str) -> List[int]:
+def string_to_list(string: str) -> list[int]:
     """
     Helper function to convert a list encoded inside a string into a Python
     list object of integer elements.
@@ -20,7 +20,7 @@ def string_to_list(string: str) -> List[int]:
     :param string: Input string containing a list.
     :type string: str
     :return: List of integer elements.
-    :rtype: List[int]
+    :rtype: list[int]
     :raise AssertionError: If input string does not contain a list.
     """
 
@@ -28,7 +28,7 @@ def string_to_list(string: str) -> List[int]:
     return [int(num) for num in string[1:-1].split(",")]
 
 
-def string_to_set(string: str) -> Set[int]:
+def string_to_set(string: str) -> set[int]:
     """
     Helper function to convert a list encoded inside a string into a Python
     set object of integer elements.
@@ -36,7 +36,7 @@ def string_to_set(string: str) -> Set[int]:
     :param string: Input string containing a list.
     :type string: str
     :return: Set of integer elements.
-    :rtype: Set[int]
+    :rtype: set[int]
     :raise AssertionError: If input string does not contain a list.
     """
 
@@ -44,12 +44,12 @@ def string_to_set(string: str) -> Set[int]:
     return {int(num) for num in string[1:-1].split(",")}
 
 
-def test_set_intersection(state: Dict) -> bool:
+def test_set_intersection(state: dict) -> bool:
     """
     Function to test whether the final solution matches ground truth.
 
     :param state: Thought state that represents the final solution.
-    :type state: Dict
+    :type state: dict
     :return: Returns whether the solution matches the ground truth.
     :rtype: bool
     """
@@ -63,12 +63,12 @@ def test_set_intersection(state: Dict) -> bool:
         return False
 
 
-def num_errors(state: Dict) -> float:
+def num_errors(state: dict) -> float:
     """
     Function to locally count the number of errors that serves as a score.
 
     :param state: Thought state to be scored.
-    :type state: Dict
+    :type state: dict
     :return: Number of errors.
     :rtype: float
     """

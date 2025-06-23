@@ -6,11 +6,9 @@
 #
 # main author: Nils Blach
 
-from __future__ import annotations
-
 import itertools
 import logging
-from typing import Iterator, Optional
+from typing import Iterator
 
 
 class Thought:
@@ -20,16 +18,16 @@ class Thought:
 
     _ids: Iterator[int] = itertools.count(0)
 
-    def __init__(self, state: Optional[] = None) -> None:
+    def __init__(self, state: dict | None = None) -> None:
         """
         Initializes a new Thought instance with a state and various default flags.
 
         :param state: The state of the thought. Defaults to None.
-        :type state: Optional[]
+        :type state: dict | None
         """
         self.logger: logging.Logger = logging.getLogger(self.__class__.__name__)
         self.id: int = next(Thought._ids)
-        self.state:  = state
+        self.state: dict | None = state
         self._score: float = 0.0
         self._valid: bool = False
         self._solved: bool = False
@@ -38,7 +36,7 @@ class Thought:
         self.compared_to_ground_truth: bool = False
 
     @staticmethod
-    def from_thought(thought: Thought) -> Thought:
+    def from_thought(thought: "Thought") -> "Thought":
         """
         Creates a new thought from an existing one.
 

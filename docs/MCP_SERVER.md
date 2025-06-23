@@ -5,6 +5,7 @@ The Graph of Thoughts MCP Server exposes Graph of Thoughts reasoning capabilitie
 ## Overview
 
 The MCP server provides:
+
 - **Tools**: Executable functions for Graph of Thoughts operations
 - **Resources**: Access to operation results, templates, and configurations
 - **Prompts**: Reusable prompt templates for common reasoning workflows
@@ -99,11 +100,13 @@ Add to your Cursor configuration:
 Decompose complex tasks into manageable subtasks.
 
 **Parameters:**
+
 - `task` (required): The complex task to break down
 - `max_subtasks` (optional): Maximum number of subtasks (default: 5)
 - `domain` (optional): Task domain for context (default: "general")
 
 **Example:**
+
 ```json
 {
   "task": "Build a web application for task management",
@@ -117,11 +120,13 @@ Decompose complex tasks into manageable subtasks.
 Generate multiple thought approaches for problem solving.
 
 **Parameters:**
+
 - `problem` (required): The problem to generate thoughts for
 - `num_thoughts` (optional): Number of thoughts to generate (default: 3)
 - `approach_type` (optional): Type of approach (default: "analytical")
 
 **Example:**
+
 ```json
 {
   "problem": "Optimize database query performance",
@@ -135,10 +140,12 @@ Generate multiple thought approaches for problem solving.
 Evaluate and score different thought approaches.
 
 **Parameters:**
+
 - `thoughts` (required): Array of thoughts to score
 - `criteria` (optional): Scoring criteria (default: "feasibility, effectiveness, and clarity")
 
 **Example:**
+
 ```json
 {
   "thoughts": [
@@ -155,11 +162,13 @@ Evaluate and score different thought approaches.
 Validate solutions and improve them iteratively.
 
 **Parameters:**
+
 - `solution` (required): The solution to validate and improve
 - `validation_criteria` (optional): Criteria for validation
 - `max_iterations` (optional): Maximum improvement iterations (default: 3)
 
 **Example:**
+
 ```json
 {
   "solution": "Use bubble sort to sort the array",
@@ -173,10 +182,12 @@ Validate solutions and improve them iteratively.
 Combine multiple results into a comprehensive solution.
 
 **Parameters:**
+
 - `results` (required): Array of results to aggregate
 - `aggregation_method` (optional): Method for aggregation (default: "synthesis")
 
 **Example:**
+
 ```json
 {
   "results": [
@@ -192,11 +203,13 @@ Combine multiple results into a comprehensive solution.
 Build complete reasoning workflows with multiple operations.
 
 **Parameters:**
+
 - `problem` (required): The problem to solve with a reasoning chain
 - `workflow_type` (optional): Type of workflow (default: "generate_score_select")
 - `num_branches` (optional): Number of parallel reasoning branches (default: 3)
 
 **Example:**
+
 ```json
 {
   "problem": "Design a recommendation system",
@@ -242,6 +255,7 @@ Execution logs and debugging information.
 Structured problem analysis using Graph of Thoughts methodology.
 
 **Arguments:**
+
 - `problem` (required): The problem statement to analyze
 - `domain` (optional): Problem domain for context
 
@@ -250,6 +264,7 @@ Structured problem analysis using Graph of Thoughts methodology.
 Generate multiple solution approaches with different perspectives.
 
 **Arguments:**
+
 - `problem` (required): The problem to solve
 - `num_approaches` (optional): Number of approaches to generate
 
@@ -258,6 +273,7 @@ Generate multiple solution approaches with different perspectives.
 Systematic evaluation of different solution options.
 
 **Arguments:**
+
 - `options` (required): List of options to evaluate
 - `criteria` (optional): Evaluation criteria
 
@@ -306,7 +322,7 @@ The server can be configured using the `mcp_server_config.json` file:
 
 ### Server Won't Start
 
-1. Check Python version (3.8+ required)
+1. Check Python version (3.12+ required)
 2. Verify Graph of Thoughts package is installed
 3. Check for import errors with `python -c "import graph_of_thoughts"`
 
@@ -347,6 +363,7 @@ python tests/run_all_tests.py --pattern "*mcp_server*"
 ## Support
 
 For issues and questions:
+
 - GitHub Issues: [graph-of-thoughts repository](https://github.com/spcl/graph-of-thoughts)
 - Documentation: See `docs/` directory
 - Examples: See `examples/` directory

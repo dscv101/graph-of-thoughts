@@ -6,17 +6,18 @@ build-backend = "hatchling.build"
 name = "graph_of_thoughts"
 version = "0.0.3"
 authors = [
-  { name="Maciej Besta", email="maciej.besta@inf.ethz.ch" },
-  { name="Nils Blach", email="nils.blach@inf.ethz.ch" },
-  { name="Ales Kubicek", email="akubicek@student.ethz.ch" },
-  { name="Robert Gerstenberger", email="gerstenberger.robert@gmail.com" },
+  { name = "Maciej Besta", email = "maciej.besta@inf.ethz.ch" },
+  { name = "Nils Blach", email = "nils.blach@inf.ethz.ch" },
+  { name = "Ales Kubicek", email = "akubicek@student.ethz.ch" },
+  { name = "Robert Gerstenberger", email = "gerstenberger.robert@gmail.com" },
 ]
 description = "Python package for Graph of Thoughts that enables solving elaborate problems with Large Language Models"
 readme = "README.md"
-license = {file = "LICENSE"}
-requires-python = ">=3.8"
+license = { file = "LICENSE" }
+requires-python = ">=3.12"
 classifiers = [
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
   "Operating System :: OS Independent",
 ]
 dependencies = [
@@ -44,21 +45,21 @@ got-mcp-server = "graph_of_thoughts.__main__:main"
 
 [tool.basedpyright]
 # Type checking configuration for basedpyright
-pythonVersion = "3.8"
+pythonVersion = "3.12"
 pythonPlatform = "All"
 typeCheckingMode = "standard"
 
 # Include and exclude patterns
 include = ["graph_of_thoughts", "examples", "tests"]
 exclude = [
-    "**/__pycache__",
-    "**/node_modules",
-    "**/.venv",
-    "**/venv",
-    "build",
-    "dist",
-    "paper",
-    "docs"
+  "**/__pycache__",
+  "**/node_modules",
+  "**/.venv",
+  "**/venv",
+  "build",
+  "dist",
+  "paper",
+  "docs",
 ]
 
 # Reporting settings

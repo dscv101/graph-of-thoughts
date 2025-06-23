@@ -16,7 +16,8 @@ import datetime
 import json
 import logging
 import os
-from typing import Callable, Dict, List, Union
+# Type annotations use built-in types for Python 3.12+ compatibility
+from typing import Callable
 
 from graph_of_thoughts import controller, language_models, operations, parser, prompter
 

@@ -28,7 +28,7 @@ used by modern language models like GPT, Claude, and others.
 import logging
 import re
 from dataclasses import dataclass
-from typing import Optional, 
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -64,12 +64,12 @@ class TokenEstimator:
     by analyzing text patterns, word structure, and content type.
     """
 
-    def __init__(self, config: Optional[TokenEstimationConfig] = None):
+    def __init__(self, config: TokenEstimationConfig | None = None):
         """
         Initialize the token estimator.
 
         :param config: Configuration for estimation parameters
-        :type config: Optional[TokenEstimationConfig]
+        :type config: TokenEstimationConfig | None
         """
         self.config = config or TokenEstimationConfig()
 
@@ -133,7 +133,7 @@ class TokenEstimator:
         return final_tokens
 
     def estimate_prompt_tokens(
-        self, prompt: str, system_prompt: Optional[str] = None
+        self, prompt: str, system_prompt: str | None = None
     ) -> int:
         """
         Estimate tokens for a complete prompt including system prompt.
@@ -141,7 +141,7 @@ class TokenEstimator:
         :param prompt: The user prompt
         :type prompt: str
         :param system_prompt: Optional system prompt
-        :type system_prompt: Optional[str]
+        :type system_prompt: str | None
         :return: Estimated total prompt tokens
         :rtype: int
         """
@@ -154,14 +154,14 @@ class TokenEstimator:
 
         return total_tokens
 
-    def _analyze_text(self, text: str) -> :
+    def _analyze_text(self, text: str) -> dict[str, Any]:
         """
         Analyze text patterns for better token estimation.
 
         :param text: Text to analyze
         :type text: str
         :return: Analysis results
-        :rtype: 
+        :rtype: dict[str, Any]
         """
         # Basic counts
         words = self._word_pattern.findall(text)
@@ -193,12 +193,12 @@ class TokenEstimator:
             "avg_word_length": sum(len(w) for w in words) / len(words) if words else 0,
         }
 
-    def _calculate_base_tokens(self, analysis: ) -> float:
+    def _calculate_base_tokens(self, analysis: dict[str, Any]) -> float:
         """
         Calculate base token estimate from text analysis.
 
         :param analysis: Text analysis results
-        :type analysis: 
+        :type analysis: dict[str, Any]
         :return: Base token estimate
         :rtype: float
         """
@@ -231,7 +231,7 @@ class TokenEstimator:
         return base_tokens
 
     def _apply_context_adjustments(
-        self, base_tokens: float, analysis: , context: str
+        self, base_tokens: float, analysis: dict[str, Any], context: str
     ) -> float:
         """
         Apply context-specific adjustments to token estimate.
@@ -239,7 +239,7 @@ class TokenEstimator:
         :param base_tokens: Base token estimate
         :type base_tokens: float
         :param analysis: Text analysis results
-        :type analysis: 
+        :type analysis: dict[str, Any]
         :param context: Context hint
         :type context: str
         :return: Adjusted token estimate
@@ -292,14 +292,14 @@ def estimate_tokens(text: str, context: str = "general") -> int:
     return default_estimator.estimate_tokens(text, context)
 
 
-def estimate_prompt_tokens(prompt: str, system_prompt: Optional[str] = None) -> int:
+def estimate_prompt_tokens(prompt: str, system_prompt: str | None = None) -> int:
     """
     Convenience function for prompt token estimation.
 
     :param prompt: The user prompt
     :type prompt: str
     :param system_prompt: Optional system prompt
-    :type system_prompt: Optional[str]
+    :type system_prompt: str | None
     :return: Estimated total prompt tokens
     :rtype: int
     """

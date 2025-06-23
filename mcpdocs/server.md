@@ -45,7 +45,7 @@ This tutorial will primarily focus on tools.
 
     ### System requirements
 
-    * Python 3.10 or higher installed.
+    * Python 3.12 or higher installed.
     * You must use the Python MCP SDK 1.2.0 or higher.
 
     ### Set up your environment
@@ -830,15 +830,15 @@ This tutorial will primarily focus on tools.
     @Service
     public class WeatherService {
 
-    	private final RestClient restClient;
+     private final RestClient restClient;
 
-    	public WeatherService() {
-    		this.restClient = RestClient.builder()
-    			.baseUrl("https://api.weather.gov")
-    			.defaultHeader("Accept", "application/geo+json")
-    			.defaultHeader("User-Agent", "WeatherApiClient/1.0 (your@email.com)")
-    			.build();
-    	}
+     public WeatherService() {
+      this.restClient = RestClient.builder()
+       .baseUrl("https://api.weather.gov")
+       .defaultHeader("Accept", "application/geo+json")
+       .defaultHeader("User-Agent", "WeatherApiClient/1.0 (your@email.com)")
+       .build();
+     }
 
       @Tool(description = "Get weather forecast for a specific latitude/longitude")
       public String getWeatherForecastByLocation(
@@ -878,14 +878,14 @@ This tutorial will primarily focus on tools.
     @SpringBootApplication
     public class McpServerApplication {
 
-    	public static void main(String[] args) {
-    		SpringApplication.run(McpServerApplication.class, args);
-    	}
+     public static void main(String[] args) {
+      SpringApplication.run(McpServerApplication.class, args);
+     }
 
-    	@Bean
-    	public ToolCallbackProvider weatherTools(WeatherService weatherService) {
-    		return  MethodToolCallbackProvider.builder().toolObjects(weatherService).build();
-    	}
+     @Bean
+     public ToolCallbackProvider weatherTools(WeatherService weatherService) {
+      return  MethodToolCallbackProvider.builder().toolObjects(weatherService).build();
+     }
     }
     ```
 
@@ -1663,7 +1663,7 @@ This tutorial will primarily focus on tools.
 
 ### Test with commands
 
-Let's make sure Claude for Desktop is picking up the two tools we've exposed in our `weather` server. You can do this by looking for the "Search and tools" <img src="https://mintlify.s3.us-west-1.amazonaws.com/mcp/images/claude-desktop-mcp-slider.svg" style={{display: 'inline', margin: 0, height: '1.3em'}} /> icon:
+Let's make sure Claude for Desktop is picking up the two tools we've exposed in our `weather` server. You can do this by looking for the "Search and tools" <img src="<https://mintlify.s3.us-west-1.amazonaws.com/mcp/images/claude-desktop-mcp-slider.svg>" style={{display: 'inline', margin: 0, height: '1.3em'}} /> icon:
 
 <Frame>
   <img src="https://mintlify.s3.us-west-1.amazonaws.com/mcp/images/visual-indicator-mcp-tools.png" />

@@ -34,7 +34,7 @@ class Llama2HF(AbstractLanguageModel):
         :type cache: bool
         """
         super().__init__(config_path, model_name, cache)
-        self.config:  = self.config[model_name]
+        self.config: dict = self.config[model_name]
         # Detailed id of the used model.
         self.model_id: str = self.config["model_id"]
         # Costs for 1000 tokens.
@@ -75,7 +75,7 @@ class Llama2HF(AbstractLanguageModel):
             model=self.model, tokenizer=self.tokenizer, task="text-generation"
         )
 
-    def query(self, query: str, num_responses: int = 1) -> []:
+    def query(self, query: str, num_responses: int = 1) -> list[dict]:
         """
         Query the LLaMA 2 model for responses.
 
@@ -84,7 +84,7 @@ class Llama2HF(AbstractLanguageModel):
         :param num_responses: Number of desired responses, default is 1.
         :type num_responses: int
         :return: Response(s) from the LLaMA 2 model.
-        :rtype: []
+        :rtype: list[dict]
         """
         if self.cache and query in self.response_cache:
             return self.response_cache[query]
@@ -109,13 +109,13 @@ class Llama2HF(AbstractLanguageModel):
             self.response_cache[query] = response
         return response
 
-    def get_response_texts(self, query_responses: []) -> [str]:
+    def get_response_texts(self, query_responses: list[dict]) -> list[str]:
         """
         Extract the response texts from the query response.
 
         :param query_responses: The response list of dictionaries generated from the `query` method.
-        :type query_responses: []
-        :return:  of response strings.
-        :rtype: [str]
+        :type query_responses: list[dict]
+        :return: List of response strings.
+        :rtype: list[str]
         """
         return [query_response["generated_text"] for query_response in query_responses]

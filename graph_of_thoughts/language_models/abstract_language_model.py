@@ -10,7 +10,7 @@ import json
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Union
+from typing import Any
 
 try:
     from .caching import CacheConfig, get_cache_manager
@@ -30,7 +30,7 @@ class AbstractLanguageModel(ABC):
         config_path: str = "",
         model_name: str = "",
         cache: bool = False,
-        cache_config: Optional[Any] = None,
+        cache_config: Any | None = None,
     ) -> None:
         """
         Initialize the AbstractLanguageModel instance with configuration, model details, and caching options.
@@ -42,10 +42,10 @@ class AbstractLanguageModel(ABC):
         :param cache: Flag to determine whether to cache responses. Defaults to False.
         :type cache: bool
         :param cache_config: Optional cache configuration for advanced caching features.
-        :type cache_config: Optional[Any]
+        :type cache_config: Any | None
         """
         self.logger: logging.Logger = logging.getLogger(self.__class__.__name__)
-        self.config: "dict[str, Any]" = {}
+        self.config: dict[str, Any] = {}
         self.model_name: str = model_name
         self.cache: bool = cache
 
@@ -104,12 +104,12 @@ class AbstractLanguageModel(ABC):
         if self.cache_manager:
             self.cache_manager.clear_all()
 
-    def get_cache_stats(self) -> Optional["dict[str, dict[str, Any]]"]:
+    def get_cache_stats(self) -> dict[str, dict[str, Any]] | None:
         """
         Get cache statistics for monitoring and debugging.
 
         :return: Cache statistics or None if caching is disabled
-        :rtype: Optional[dict[str, dict[str, Any]]]
+        :rtype: dict[str, dict[str, Any]] | None
         """
         if not self.cache or not self.cache_manager:
             return None
@@ -130,12 +130,12 @@ class AbstractLanguageModel(ABC):
         pass
 
     @abstractmethod
-    def get_response_texts(self, query_responses: Union["list[Any]", Any]) -> "list[str]":
+    def get_response_texts(self, query_responses: list[Any] | Any) -> list[str]:
         """
         Abstract method to extract response texts from the language model's response(s).
 
         :param query_responses: The responses returned from the language model.
-        :type query_responses: Union[list[Any], Any]
+        :type query_responses: list[Any] | Any
         :return: List of textual responses.
         :rtype: list[str]
         """

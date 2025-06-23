@@ -6,9 +6,6 @@
 #
 # main author: Nils Blach
 
-from __future__ import annotations
-
-
 from graph_of_thoughts.operations.operations import Operation
 
 

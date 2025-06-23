@@ -6,10 +6,10 @@
 #
 # main author: Nils Blach
 
-from typing import Dict, List
+# Type annotations use built-in types for Python 3.12+ compatibility
 
 
-def string_to_list(string: str) -> List[int]:
+def string_to_list(string: str) -> list[int]:
     """
     Helper function to convert a list encoded inside a string into a Python
     list object of string elements.
@@ -17,7 +17,7 @@ def string_to_list(string: str) -> List[int]:
     :param string: Input string containing a list.
     :type string: str
     :return: List of string elements.
-    :rtype: List[str]
+    :rtype: list[str]
     :raise AssertionError: If input string does not contain a list.
     """
 

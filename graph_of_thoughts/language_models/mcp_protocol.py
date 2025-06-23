@@ -175,7 +175,7 @@ import os
 import shutil
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional, Typed, Union
+from typing import Any, TypedDict
 
 
 class MCPTransportType(Enum):
@@ -193,29 +193,29 @@ class MCPIncludeContext(Enum):
     ALL_SERVERS = "allServers"
 
 
-class MCPClientInfo(Typed):
+class MCPClientInfo(TypedDict):
     """MCP client information structure."""
 
     name: str
     version: str
 
 
-class MCPModelHint(Typed):
+class MCPModelHint(TypedDict):
     """Model hint structure for model preferences."""
 
     name: str
 
 
-class MCPModelPreferences(Typed, total=False):
+class MCPModelPreferences(TypedDict, total=False):
     """Model preferences structure for sampling requests."""
 
-    hints: [MCPModelHint]
+    hints: list[MCPModelHint]
     costPriority: float
     speedPriority: float
     intelligencePriority: float
 
 
-class MCPMessageContent(Typed, total=False):
+class MCPMessageContent(TypedDict, total=False):
     """Content structure for MCP messages."""
 
     type: str
@@ -224,27 +224,27 @@ class MCPMessageContent(Typed, total=False):
     mimeType: str
 
 
-class MCPMessage(Typed):
+class MCPMessage(TypedDict):
     """Message structure for MCP conversations."""
 
     role: str  # "user" or "assistant"
     content: MCPMessageContent
 
 
-class MCPSamplingRequest(Typed, total=False):
+class MCPSamplingRequest(TypedDict, total=False):
     """MCP sampling request structure according to the specification."""
 
-    messages: [MCPMessage]
+    messages: list[MCPMessage]
     maxTokens: int
     modelPreferences: MCPModelPreferences
     systemPrompt: str
     includeContext: str
     temperature: float
-    stopSequences: [str]
-    metadata: [str, Any]
+    stopSequences: list[str]
+    metadata: dict[str, Any]
 
 
-class MCPSamplingResponse(Typed, total=False):
+class MCPSamplingResponse(TypedDict, total=False):
     """MCP sampling response structure."""
 
     model: str
@@ -259,12 +259,12 @@ class MCPProtocolValidator:
     def __init__(self) -> None:
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def validate_client_info(self, client_info: [str, Any]) -> bool:
+    def validate_client_info(self, client_info: dict[str, Any]) -> bool:
         """
         Validate client information structure.
 
         :param client_info: Client info dictionary
-        :type client_info: [str, Any]
+        :type client_info: dict[str, Any]
         :return: True if valid, False otherwise
         :rtype: bool
         """
@@ -275,12 +275,12 @@ class MCPProtocolValidator:
                 return False
         return True
 
-    def validate_transport_config(self, transport: [str, Any]) -> bool:
+    def validate_transport_config(self, transport: dict[str, Any]) -> bool:
         """
         Validate transport configuration.
 
         :param transport: Transport configuration dictionary
-        :type transport: [str, Any]
+        :type transport: dict[str, Any]
         :return: True if valid, False otherwise
         :rtype: bool
         """
@@ -300,7 +300,7 @@ class MCPProtocolValidator:
 
         return False
 
-    def _validate_stdio_transport(self, transport: [str, Any]) -> bool:
+    def _validate_stdio_transport(self, transport: dict[str, Any]) -> bool:
         """Validate stdio transport configuration."""
         required_fields = ["command"]
         for field in required_fields:
@@ -309,7 +309,7 @@ class MCPProtocolValidator:
                 return False
         return True
 
-    def _validate_http_transport(self, transport: [str, Any]) -> bool:
+    def _validate_http_transport(self, transport: dict[str, Any]) -> bool:
         """Validate HTTP transport configuration."""
         required_fields = ["url"]
         for field in required_fields:
@@ -318,12 +318,12 @@ class MCPProtocolValidator:
                 return False
         return True
 
-    def validate_model_preferences(self, preferences: [str, Any]) -> bool:
+    def validate_model_preferences(self, preferences: dict[str, Any]) -> bool:
         """
         Validate model preferences structure.
 
         :param preferences: Model preferences dictionary
-        :type preferences: [str, Any]
+        :type preferences: dict[str, Any]
         :return: True if valid, False otherwise
         :rtype: bool
         """
@@ -351,12 +351,12 @@ class MCPProtocolValidator:
 
         return True
 
-    def validate_sampling_request(self, request: [str, Any]) -> bool:
+    def validate_sampling_request(self, request: dict[str, Any]) -> bool:
         """
         Validate sampling request structure.
 
         :param request: Sampling request dictionary
-        :type request: [str, Any]
+        :type request: dict[str, Any]
         :return: True if valid, False otherwise
         :rtype: bool
         """
@@ -393,7 +393,7 @@ class MCPProtocolValidator:
 
         return True
 
-    def _validate_message(self, message: [str, Any]) -> bool:
+    def _validate_message(self, message: dict[str, Any]) -> bool:
         """Validate individual message structure."""
         required_fields = ["role", "content"]
         for field in required_fields:
@@ -429,12 +429,12 @@ class MCPProtocolValidator:
 
         return True
 
-    def validate_configuration(self, config: [str, Any]) -> bool:
+    def validate_configuration(self, config: dict[str, Any]) -> bool:
         """
         Validate complete MCP configuration.
 
         :param config: Configuration dictionary
-        :type config: [str, Any]
+        :type config: dict[str, Any]
         :return: True if valid, False otherwise
         :rtype: bool
         """
@@ -468,36 +468,36 @@ class MCPProtocolValidator:
 
 
 def create_sampling_request(
-    messages: [[str, Any]],
-    model_preferences: Optional[[str, Any]] = None,
-    system_prompt: Optional[str] = None,
+    messages: list[dict[str, Any]],
+    model_preferences: dict[str, Any] | None = None,
+    system_prompt: str | None = None,
     include_context: str = "none",
-    temperature: Optional[float] = None,
+    temperature: float | None = None,
     max_tokens: int = 1000,
-    stop_sequences: Optional[[str]] = None,
-    metadata: Optional[[str, Any]] = None,
-) -> [str, Any]:
+    stop_sequences: list[str] | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Create a properly formatted MCP sampling request.
 
-    :param messages:  of conversation messages
-    :type messages: [[str, Any]]
+    :param messages: List of conversation messages
+    :type messages: list[dict[str, Any]]
     :param model_preferences: Model selection preferences
-    :type model_preferences: Optional[[str, Any]]
+    :type model_preferences: dict[str, Any] | None
     :param system_prompt: Optional system prompt
-    :type system_prompt: Optional[str]
+    :type system_prompt: str | None
     :param include_context: Context inclusion setting
     :type include_context: str
     :param temperature: Sampling temperature
-    :type temperature: Optional[float]
+    :type temperature: float | None
     :param max_tokens: Maximum tokens to generate
     :type max_tokens: int
     :param stop_sequences: Stop sequences
-    :type stop_sequences: Optional[[str]]
+    :type stop_sequences: list[str] | None
     :param metadata: Additional metadata
-    :type metadata: Optional[[str, Any]]
+    :type metadata: dict[str, Any] | None
     :return: Formatted sampling request
-    :rtype: [str, Any]
+    :rtype: dict[str, Any]
     """
     request = {
         "messages": messages,
@@ -519,7 +519,7 @@ def create_sampling_request(
     return request
 
 
-def create_text_message(role: str, text: str) -> [str, Any]:
+def create_text_message(role: str, text: str) -> dict[str, Any]:
     """
     Create a properly formatted MCP text message.
 
@@ -528,12 +528,12 @@ def create_text_message(role: str, text: str) -> [str, Any]:
     :param text: Message text content
     :type text: str
     :return: Formatted message
-    :rtype: [str, Any]
+    :rtype: dict[str, Any]
     """
     return {"role": role, "content": {"type": "text", "text": text}}
 
 
-def create_image_message(role: str, data: str, mime_type: str) -> [str, Any]:
+def create_image_message(role: str, data: str, mime_type: str) -> dict[str, Any]:
     """
     Create a properly formatted MCP image message.
 
@@ -544,7 +544,7 @@ def create_image_message(role: str, data: str, mime_type: str) -> [str, Any]:
     :param mime_type: MIME type of the image
     :type mime_type: str
     :return: Formatted message
-    :rtype: [str, Any]
+    :rtype: dict[str, Any]
     """
     return {
         "role": role,
@@ -611,7 +611,7 @@ class MCPConfigurationError(Exception):
     """Exception raised for MCP configuration errors."""
 
     def __init__(
-        self, message: str, field_path: str = "", validation_errors: [str] = None
+        self, message: str, field_path: str = "", validation_errors: list[str] | None = None
     ):
         """
         Initialize configuration error with detailed context.
@@ -620,8 +620,8 @@ class MCPConfigurationError(Exception):
         :type message: str
         :param field_path: Path to the problematic field (e.g., "transport.command")
         :type field_path: str
-        :param validation_errors:  of specific validation errors
-        :type validation_errors: [str]
+        :param validation_errors: List of specific validation errors
+        :type validation_errors: list[str] | None
         """
         super().__init__(message)
         self.field_path = field_path

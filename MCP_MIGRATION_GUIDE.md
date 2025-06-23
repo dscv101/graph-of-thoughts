@@ -24,7 +24,7 @@ The refactored MCP implementation brings full compliance with the official Model
 
 Before migrating to MCP, ensure you have:
 
-1. **Python 3.8+** with the updated Graph of Thoughts package
+1. **Python 3.12+** with the updated Graph of Thoughts package
 2. **MCP-enabled host** (one of the following):
    - Claude Desktop with MCP support
    - VSCode with MCP extension
@@ -43,6 +43,7 @@ pip install --upgrade graph_of_thoughts
 ```
 
 Or if installing from source:
+
 ```bash
 pip install -e .
 ```
@@ -143,7 +144,8 @@ cp graph_of_thoughts/language_models/mcp_config_template.json graph_of_thoughts/
 
 ### Step 3: Update Your Code
 
-#### Before (API Key-based):
+#### Before (API Key-based)
+
 ```python
 from graph_of_thoughts import controller, language_models, operations
 
@@ -155,7 +157,8 @@ lm = language_models.ChatGPT(
 )
 ```
 
-#### After (MCP-based):
+#### After (MCP-based)
+
 ```python
 from graph_of_thoughts import controller, language_models, operations
 
@@ -169,24 +172,29 @@ lm = language_models.MCPLanguageModel(
 
 ### Step 4: Configure Your MCP Host
 
-#### For Claude Desktop:
+#### For Claude Desktop
+
 1. Install Claude Desktop with MCP support
 2. Configure Claude Desktop to expose MCP server
 3. Ensure the MCP server is running when you execute your code
 
-#### For VSCode:
+#### For VSCode
+
 1. Install the MCP extension for VSCode
 2. Configure the extension settings
 3. Start VSCode with MCP server enabled
 
-#### For Cursor:
+#### For Cursor
+
 1. Ensure Cursor has MCP support enabled
 2. Configure MCP settings in Cursor preferences
 3. Start Cursor with MCP server running
 
-#### For Remote MCP Server:
+#### For Remote MCP Server
+
 1. Set up your remote MCP server
 2. Update the configuration to use HTTP transport:
+
 ```json
 {
     "mcp_http_server": {
@@ -207,6 +215,7 @@ lm = language_models.MCPLanguageModel(
 ### Model Preferences
 
 Configure model selection preferences:
+
 - `hints`: Preferred model names or families
 - `costPriority`: Importance of minimizing costs (0-1)
 - `speedPriority`: Importance of low latency (0-1)
@@ -215,6 +224,7 @@ Configure model selection preferences:
 ### Sampling Configuration
 
 Control how the language model generates responses:
+
 - `temperature`: Randomness of responses (0.0-1.0)
 - `max_tokens`: Maximum response length
 - `stop_sequences`: Sequences that stop generation
@@ -224,7 +234,8 @@ Control how the language model generates responses:
 
 Here's a complete example showing the migration of a sorting task:
 
-### Before (API Key):
+### Before (API Key)
+
 ```python
 import os
 from graph_of_thoughts import controller, language_models, operations
@@ -251,7 +262,8 @@ ctrl = controller.Controller(
 ctrl.run()
 ```
 
-### After (MCP):
+### After (MCP)
+
 ```python
 import os
 from graph_of_thoughts import controller, language_models, operations
@@ -290,6 +302,7 @@ ctrl.run()
 ### Debugging
 
 Enable debug logging to troubleshoot issues:
+
 ```python
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -298,6 +311,7 @@ logging.basicConfig(level=logging.DEBUG)
 ### Fallback Strategy
 
 You can maintain both API key and MCP configurations for fallback:
+
 ```python
 try:
     lm = language_models.MCPLanguageModel("mcp_config.json", "mcp_claude_desktop")
@@ -317,6 +331,7 @@ except Exception as e:
 ## Support
 
 For issues with MCP integration:
+
 - Check the MCP documentation for your specific host
 - Review the Graph of Thoughts logs for detailed error messages
 - Ensure your MCP host supports the required protocol version
@@ -325,6 +340,7 @@ For issues with MCP integration:
 ## Next Steps
 
 After successful migration:
+
 1. Explore advanced MCP features like context sharing
 2. Experiment with different model preferences
 3. Set up multiple MCP configurations for different use cases

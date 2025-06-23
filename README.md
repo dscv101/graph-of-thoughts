@@ -37,16 +37,19 @@ See the [Batch Processing Documentation](docs/BATCH_PROCESSING.md) for detailed 
 
 ## Setup Guide
 
-In order to use this framework, you need to have a working installation of Python 3.8 or newer.
+In order to use this framework, you need to have a working installation of Python 3.12 or newer.
 
 ### Installing GoT
 
-Before running either of the following two installation methods, make sure to activate your Python environment (if any) beforehand.  
+Before running either of the following two installation methods, make sure to activate your Python environment (if any) beforehand.
 If you are a user and you just want to use `graph_of_thoughts`, you can install it directly from PyPI:
+
 ```bash
 pip install graph_of_thoughts
 ```
+
 If you are a developer and you want to modify the code, you can install it in editable mode from source:
+
 ```bash
 git clone https://github.com/spcl/graph-of-thoughts.git
 cd graph-of-thoughts
@@ -59,6 +62,7 @@ In order to use the framework, you need to have access to an LLM.
 
 **Option 1: MCP Integration (Recommended)**
 For the best performance with batch processing, use the new MCP (Model Context Protocol) integration:
+
 ```bash
 # Copy and customize the MCP configuration template
 cp graph_of_thoughts/language_models/mcp_config_template.json config.json
@@ -70,7 +74,7 @@ Please follow the instructions in the [Controller README](graph_of_thoughts/cont
 
 ## Quick Start
 
-The following code snippet shows how to use the framework to solve the sorting problem for a list of 32 numbers using a CoT-like approach.  
+The following code snippet shows how to use the framework to solve the sorting problem for a list of 32 numbers using a CoT-like approach.
 Make sure you have followed the [Setup Guide](#setup-guide) before running the code.
 
 ```python
@@ -92,9 +96,9 @@ lm = language_models.ChatGPT("config.json", model_name="chatgpt")
 
 # Create the Controller
 ctrl = controller.Controller(
-  lm, 
-  gop, 
-  SortingPrompter(), 
+  lm,
+  gop,
+  SortingPrompter(),
   SortingParser(),
   # The following dictionary is used to configure the initial thought state
   {
@@ -127,9 +131,9 @@ lm = language_models.ChatGPT("config.json", model_name="chatgpt")
 
 # Create the Controller
 ctrl = controller.Controller(
-  lm, 
-  gop, 
-  SortingPrompter(), 
+  lm,
+  gop,
+  SortingPrompter(),
   SortingParser(),
   # The following dictionary is used to configure the initial thought state
   {
@@ -144,13 +148,15 @@ ctrl = controller.Controller(
 ctrl.run()
 ctrl.output_graph("output_got.json")
 ```
-You can compare the two results by inspecting the output graphs `output_cot.json` and `output_got.json`.  
+
+You can compare the two results by inspecting the output graphs `output_cot.json` and `output_got.json`.
 The final thought states' scores indicate the number of errors in the sorted list.
 
 ## Documentation
-The paper gives a high-level overview of the framework and its components.  
-In order to understand the framework in more detail, you can read the documentation of the individual modules.  
-Especially the [Controller](graph_of_thoughts/controller/README.md) and [Operations](graph_of_thoughts/operations/README.md) modules are important for understanding how to make the most out of the framework.  
+
+The paper gives a high-level overview of the framework and its components.
+In order to understand the framework in more detail, you can read the documentation of the individual modules.
+Especially the [Controller](graph_of_thoughts/controller/README.md) and [Operations](graph_of_thoughts/operations/README.md) modules are important for understanding how to make the most out of the framework.
 We took extra care to fully document the code, so that you can easily understand how it works and how to extend it.
 
 ## Examples
@@ -161,12 +167,14 @@ Each example contains a `README.md` file with instructions on how to run it and 
 You can also run the examples straight from the main directory. Note that the results will be stored in the respective examples sub-directory.
 
 ### Traditional Examples
+
 ```bash
 python -m examples.sorting.sorting_032
 python -m examples.keyword_counting.keyword_counting
 ```
 
 ### New Batch Processing Examples
+
 ```bash
 # Simple batch processing demonstration
 python examples/simple_batch_example.py
@@ -177,15 +185,16 @@ python examples/batch_processing_demo.py
 # Performance benchmark comparing batch vs sequential processing
 python examples/batch_performance_benchmark.py
 ```
+
 ## Paper Results
 
-You can run the experiments from the paper by following the instructions in the [examples](examples) directory.  
+You can run the experiments from the paper by following the instructions in the [examples](examples) directory.
 However, if you just want to inspect and replot the results, you can use the [paper](paper) directory.
 
 ## Citations
 
-If you find this repository valuable, please give it a star!  
-Got any questions or feedback? Feel free to reach out to [nils.blach@inf.ethz.ch](mailto:nils.blach@inf.ethz.ch) or open an issue.  
+If you find this repository valuable, please give it a star!
+Got any questions or feedback? Feel free to reach out to [nils.blach@inf.ethz.ch](mailto:nils.blach@inf.ethz.ch) or open an issue.
 Using this in your work? Please reference us using the provided citation:
 
 ```bibtex
