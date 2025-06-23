@@ -69,13 +69,13 @@ Example Usage:
     ```
 """
 
-import logging
-from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional, Type, Union
-from dataclasses import dataclass
 import json
+import logging
 import os
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Type, Union
 
 logger = logging.getLogger(__name__)
 
@@ -84,10 +84,10 @@ logger = logging.getLogger(__name__)
 class HostCapabilities:
     """
     Represents the capabilities of an MCP host.
-    
+
     Attributes:
         supports_resources: Whether the host supports MCP resources
-        supports_prompts: Whether the host supports MCP prompts  
+        supports_prompts: Whether the host supports MCP prompts
         supports_tools: Whether the host supports MCP tools
         supports_sampling: Whether the host supports MCP sampling
         supports_roots: Whether the host supports MCP roots
@@ -95,6 +95,7 @@ class HostCapabilities:
         transport_types: List of supported transport types
         authentication_methods: List of supported authentication methods
     """
+
     supports_resources: bool = False
     supports_prompts: bool = False
     supports_tools: bool = False
@@ -103,7 +104,7 @@ class HostCapabilities:
     supports_discovery: bool = False
     transport_types: List[str] = None
     authentication_methods: List[str] = None
-    
+
     def __post_init__(self):
         if self.transport_types is None:
             self.transport_types = ["stdio"]
@@ -114,58 +115,58 @@ class HostCapabilities:
 class MCPHostPlugin(ABC):
     """
     Abstract base class for MCP host plugins.
-    
+
     Each MCP host (Claude Desktop, VSCode, Cursor, etc.) should implement this interface
     to provide host-specific configuration, validation, and capabilities.
     """
-    
+
     @abstractmethod
     def get_host_name(self) -> str:
         """
         Get the unique identifier for this MCP host.
-        
+
         Returns:
             str: Unique host identifier (e.g., "claude_desktop", "vscode", "cursor")
         """
         pass
-    
+
     @abstractmethod
     def get_display_name(self) -> str:
         """
         Get the human-readable display name for this MCP host.
-        
+
         Returns:
             str: Display name (e.g., "Claude Desktop", "VS Code", "Cursor")
         """
         pass
-    
+
     @abstractmethod
     def get_default_config(self) -> Dict[str, Any]:
         """
         Get the default configuration for this MCP host.
-        
+
         Returns:
             Dict[str, Any]: Default configuration dictionary
         """
         pass
-    
+
     @abstractmethod
     def get_capabilities(self) -> HostCapabilities:
         """
         Get the capabilities supported by this MCP host.
-        
+
         Returns:
             HostCapabilities: Host capability information
         """
         pass
-    
+
     def validate_config(self, config: Dict[str, Any]) -> bool:
         """
         Validate a configuration for this MCP host.
-        
+
         Args:
             config: Configuration dictionary to validate
-            
+
         Returns:
             bool: True if configuration is valid, False otherwise
         """
@@ -174,58 +175,62 @@ class MCPHostPlugin(ABC):
             if "transport" not in config:
                 logger.error(f"Missing 'transport' in {self.get_host_name()} config")
                 return False
-            
+
             transport_config = config["transport"]
             if "type" not in transport_config:
-                logger.error(f"Missing 'type' in transport config for {self.get_host_name()}")
+                logger.error(
+                    f"Missing 'type' in transport config for {self.get_host_name()}"
+                )
                 return False
-            
+
             # Validate transport type is supported
             capabilities = self.get_capabilities()
             if transport_config["type"] not in capabilities.transport_types:
-                logger.error(f"Unsupported transport type '{transport_config['type']}' for {self.get_host_name()}")
+                logger.error(
+                    f"Unsupported transport type '{transport_config['type']}' for {self.get_host_name()}"
+                )
                 return False
-            
+
             return self._validate_host_specific_config(config)
-            
+
         except Exception as e:
             logger.error(f"Config validation failed for {self.get_host_name()}: {e}")
             return False
-    
+
     def _validate_host_specific_config(self, config: Dict[str, Any]) -> bool:
         """
         Perform host-specific configuration validation.
-        
+
         Subclasses can override this method to add custom validation logic.
-        
+
         Args:
             config: Configuration dictionary to validate
-            
+
         Returns:
             bool: True if configuration is valid, False otherwise
         """
         return True
-    
+
     def get_config_template(self) -> str:
         """
         Get a JSON configuration template for this MCP host.
-        
+
         Returns:
             str: JSON configuration template
         """
         config = self.get_default_config()
         return json.dumps({f"mcp_{self.get_host_name()}": config}, indent=4)
-    
+
     def customize_transport_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Customize transport configuration for this host.
-        
+
         Subclasses can override this method to modify transport configuration
         before transport creation.
-        
+
         Args:
             config: Original configuration
-            
+
         Returns:
             Dict[str, Any]: Modified configuration
         """
@@ -234,57 +239,51 @@ class MCPHostPlugin(ABC):
 
 class ClaudeDesktopPlugin(MCPHostPlugin):
     """Plugin for Claude Desktop MCP host."""
-    
+
     def get_host_name(self) -> str:
         return "claude_desktop"
-    
+
     def get_display_name(self) -> str:
         return "Claude Desktop"
-    
+
     def get_default_config(self) -> Dict[str, Any]:
         return {
             "transport": {
                 "type": "stdio",
                 "command": "claude-desktop-mcp-server",
                 "args": [],
-                "env": {}
+                "env": {},
             },
-            "client_info": {
-                "name": "graph-of-thoughts",
-                "version": "0.0.3"
-            },
+            "client_info": {"name": "graph-of-thoughts", "version": "0.0.3"},
             "capabilities": {
                 "sampling": {},
                 "tools": {},
                 "resources": {},
-                "prompts": {}
+                "prompts": {},
             },
             "default_sampling_params": {
                 "modelPreferences": {
                     "hints": [
                         {"name": "claude-3-5-sonnet"},
-                        {"name": "claude-3-haiku"}
+                        {"name": "claude-3-haiku"},
                     ],
                     "costPriority": 0.3,
                     "speedPriority": 0.4,
-                    "intelligencePriority": 0.8
+                    "intelligencePriority": 0.8,
                 },
                 "temperature": 1.0,
                 "maxTokens": 4096,
                 "stopSequences": [],
-                "includeContext": "thisServer"
+                "includeContext": "thisServer",
             },
             "connection_config": {
                 "timeout": 30.0,
                 "retry_attempts": 3,
-                "retry_delay": 1.0
+                "retry_delay": 1.0,
             },
-            "cost_tracking": {
-                "prompt_token_cost": 0.003,
-                "response_token_cost": 0.015
-            }
+            "cost_tracking": {"prompt_token_cost": 0.003, "response_token_cost": 0.015},
         }
-    
+
     def get_capabilities(self) -> HostCapabilities:
         return HostCapabilities(
             supports_resources=True,
@@ -294,75 +293,66 @@ class ClaudeDesktopPlugin(MCPHostPlugin):
             supports_roots=False,
             supports_discovery=False,
             transport_types=["stdio"],
-            authentication_methods=[]
+            authentication_methods=[],
         )
-    
+
     def _validate_host_specific_config(self, config: Dict[str, Any]) -> bool:
         """Validate Claude Desktop specific configuration."""
         transport_config = config.get("transport", {})
-        
+
         # Check for Claude Desktop specific command
         command = transport_config.get("command", "")
         if "claude" not in command.lower():
             logger.warning(f"Command '{command}' may not be Claude Desktop")
-        
+
         return True
 
 
 class VSCodePlugin(MCPHostPlugin):
     """Plugin for VS Code MCP host."""
-    
+
     def get_host_name(self) -> str:
         return "vscode"
-    
+
     def get_display_name(self) -> str:
         return "VS Code"
-    
+
     def get_default_config(self) -> Dict[str, Any]:
         return {
             "transport": {
                 "type": "stdio",
                 "command": "code",
                 "args": ["--mcp-server"],
-                "env": {}
+                "env": {},
             },
-            "client_info": {
-                "name": "graph-of-thoughts",
-                "version": "0.0.3"
-            },
+            "client_info": {"name": "graph-of-thoughts", "version": "0.0.3"},
             "capabilities": {
                 "sampling": {},
                 "tools": {},
                 "resources": {},
                 "prompts": {},
-                "roots": {}
+                "roots": {},
             },
             "default_sampling_params": {
                 "modelPreferences": {
-                    "hints": [
-                        {"name": "gpt-4"},
-                        {"name": "gpt-3.5-turbo"}
-                    ],
+                    "hints": [{"name": "gpt-4"}, {"name": "gpt-3.5-turbo"}],
                     "costPriority": 0.5,
                     "speedPriority": 0.6,
-                    "intelligencePriority": 0.7
+                    "intelligencePriority": 0.7,
                 },
                 "temperature": 1.0,
                 "maxTokens": 4096,
                 "stopSequences": [],
-                "includeContext": "thisServer"
+                "includeContext": "thisServer",
             },
             "connection_config": {
                 "timeout": 30.0,
                 "retry_attempts": 3,
-                "retry_delay": 1.0
+                "retry_delay": 1.0,
             },
-            "cost_tracking": {
-                "prompt_token_cost": 0.03,
-                "response_token_cost": 0.06
-            }
+            "cost_tracking": {"prompt_token_cost": 0.03, "response_token_cost": 0.06},
         }
-    
+
     def get_capabilities(self) -> HostCapabilities:
         return HostCapabilities(
             supports_resources=True,
@@ -372,7 +362,7 @@ class VSCodePlugin(MCPHostPlugin):
             supports_roots=True,
             supports_discovery=True,
             transport_types=["stdio"],
-            authentication_methods=[]
+            authentication_methods=[],
         )
 
 
@@ -391,40 +381,28 @@ class CursorPlugin(MCPHostPlugin):
                 "type": "stdio",
                 "command": "cursor",
                 "args": ["--mcp-server"],
-                "env": {}
+                "env": {},
             },
-            "client_info": {
-                "name": "graph-of-thoughts",
-                "version": "0.0.3"
-            },
-            "capabilities": {
-                "sampling": {},
-                "tools": {}
-            },
+            "client_info": {"name": "graph-of-thoughts", "version": "0.0.3"},
+            "capabilities": {"sampling": {}, "tools": {}},
             "default_sampling_params": {
                 "modelPreferences": {
-                    "hints": [
-                        {"name": "claude-3-5-sonnet"},
-                        {"name": "gpt-4"}
-                    ],
+                    "hints": [{"name": "claude-3-5-sonnet"}, {"name": "gpt-4"}],
                     "costPriority": 0.4,
                     "speedPriority": 0.5,
-                    "intelligencePriority": 0.8
+                    "intelligencePriority": 0.8,
                 },
                 "temperature": 1.0,
                 "maxTokens": 4096,
                 "stopSequences": [],
-                "includeContext": "thisServer"
+                "includeContext": "thisServer",
             },
             "connection_config": {
                 "timeout": 30.0,
                 "retry_attempts": 3,
-                "retry_delay": 1.0
+                "retry_delay": 1.0,
             },
-            "cost_tracking": {
-                "prompt_token_cost": 0.003,
-                "response_token_cost": 0.015
-            }
+            "cost_tracking": {"prompt_token_cost": 0.003, "response_token_cost": 0.015},
         }
 
     def get_capabilities(self) -> HostCapabilities:
@@ -436,7 +414,7 @@ class CursorPlugin(MCPHostPlugin):
             supports_roots=False,
             supports_discovery=False,
             transport_types=["stdio"],
-            authentication_methods=[]
+            authentication_methods=[],
         )
 
 
@@ -456,51 +434,43 @@ class HTTPServerPlugin(MCPHostPlugin):
                 "url": "http://localhost:8000/mcp",
                 "headers": {
                     "Content-Type": "application/json",
-                    "Accept": "application/json, text/event-stream"
+                    "Accept": "application/json, text/event-stream",
                 },
-                "session_management": True
+                "session_management": True,
             },
-            "client_info": {
-                "name": "graph-of-thoughts",
-                "version": "0.0.3"
-            },
+            "client_info": {"name": "graph-of-thoughts", "version": "0.0.3"},
             "capabilities": {
                 "sampling": {},
                 "tools": {},
                 "resources": {},
-                "prompts": {}
+                "prompts": {},
             },
             "default_sampling_params": {
                 "modelPreferences": {
-                    "hints": [
-                        {"name": "claude-3-5-sonnet"}
-                    ],
+                    "hints": [{"name": "claude-3-5-sonnet"}],
                     "costPriority": 0.3,
                     "speedPriority": 0.5,
-                    "intelligencePriority": 0.9
+                    "intelligencePriority": 0.9,
                 },
                 "temperature": 1.0,
                 "maxTokens": 4096,
                 "stopSequences": [],
-                "includeContext": "allServers"
+                "includeContext": "allServers",
             },
             "connection_config": {
                 "timeout": 60.0,
                 "retry_attempts": 5,
-                "retry_delay": 2.0
+                "retry_delay": 2.0,
             },
-            "cost_tracking": {
-                "prompt_token_cost": 0.003,
-                "response_token_cost": 0.015
-            },
+            "cost_tracking": {"prompt_token_cost": 0.003, "response_token_cost": 0.015},
             "batch_processing": {
                 "max_concurrent": 15,
                 "batch_size": 100,
                 "retry_attempts": 5,
                 "retry_delay": 2.0,
                 "timeout_per_request": 60.0,
-                "enable_by_default": True
-            }
+                "enable_by_default": True,
+            },
         }
 
     def get_capabilities(self) -> HostCapabilities:
@@ -512,7 +482,7 @@ class HTTPServerPlugin(MCPHostPlugin):
             supports_roots=False,
             supports_discovery=True,
             transport_types=["http"],
-            authentication_methods=["bearer", "basic", "oauth2"]
+            authentication_methods=["bearer", "basic", "oauth2"],
         )
 
     def _validate_host_specific_config(self, config: Dict[str, Any]) -> bool:
@@ -548,7 +518,9 @@ def register_host_plugin(plugin: MCPHostPlugin) -> None:
         logger.warning(f"Overriding existing plugin for host: {host_name}")
 
     _plugin_registry[host_name] = plugin
-    logger.info(f"Registered MCP host plugin: {plugin.get_display_name()} ({host_name})")
+    logger.info(
+        f"Registered MCP host plugin: {plugin.get_display_name()} ({host_name})"
+    )
 
 
 def get_host_plugin(host_name: str) -> Optional[MCPHostPlugin]:
@@ -618,7 +590,9 @@ def create_transport_from_plugin(config: Dict[str, Any]) -> Any:
 
             # Allow plugin to customize transport config
             customized_config = plugin.customize_transport_config(config)
-            logger.info(f"Creating transport for {plugin.get_display_name()} using plugin")
+            logger.info(
+                f"Creating transport for {plugin.get_display_name()} using plugin"
+            )
             return create_transport(customized_config)
 
     # Fallback to standard transport creation
@@ -704,9 +678,9 @@ def discover_available_hosts() -> Dict[str, Dict[str, Any]]:
                 "supports_roots": capabilities.supports_roots,
                 "supports_discovery": capabilities.supports_discovery,
                 "transport_types": capabilities.transport_types,
-                "authentication_methods": capabilities.authentication_methods
+                "authentication_methods": capabilities.authentication_methods,
             },
-            "config_template": plugin.get_config_template()
+            "config_template": plugin.get_config_template(),
         }
 
     return hosts_info
@@ -728,7 +702,7 @@ def export_all_config_templates(output_path: str) -> None:
     output_file = Path(output_path)
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(output_file, 'w') as f:
+    with open(output_file, "w") as f:
         json.dump(all_configs, f, indent=4)
 
     logger.info(f"Exported configuration templates to: {output_path}")
@@ -740,7 +714,7 @@ def _initialize_default_plugins() -> None:
         ClaudeDesktopPlugin(),
         VSCodePlugin(),
         CursorPlugin(),
-        HTTPServerPlugin()
+        HTTPServerPlugin(),
     ]
 
     for plugin in default_plugins:

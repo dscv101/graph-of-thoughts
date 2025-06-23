@@ -80,26 +80,27 @@ Example Usage:
 import asyncio
 import logging
 import time
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Type, Union
-from contextlib import asynccontextmanager
 
 logger = logging.getLogger(__name__)
 
 
 class CircuitBreakerState(Enum):
     """Circuit breaker states."""
-    CLOSED = "closed"       # Normal operation
-    OPEN = "open"          # Failing, requests blocked
-    HALF_OPEN = "half_open" # Testing recovery
+
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Failing, requests blocked
+    HALF_OPEN = "half_open"  # Testing recovery
 
 
 @dataclass
 class CircuitBreakerConfig:
     """
     Configuration for circuit breaker behavior.
-    
+
     Attributes:
         failure_threshold: Number of failures before opening circuit
         recovery_timeout: Time to wait before attempting recovery (seconds)
@@ -109,6 +110,7 @@ class CircuitBreakerConfig:
         monitoring_window: Time window for failure rate calculation (seconds)
         minimum_throughput: Minimum requests before considering failure rate
     """
+
     failure_threshold: int = 5
     recovery_timeout: float = 30.0
     half_open_max_calls: int = 3
@@ -122,7 +124,7 @@ class CircuitBreakerConfig:
 class CircuitBreakerMetrics:
     """
     Metrics for circuit breaker monitoring.
-    
+
     Attributes:
         total_requests: Total number of requests
         successful_requests: Number of successful requests
@@ -132,6 +134,7 @@ class CircuitBreakerMetrics:
         state_change_time: Timestamp of last state change
         current_state: Current circuit breaker state
     """
+
     total_requests: int = 0
     successful_requests: int = 0
     failed_requests: int = 0
@@ -143,6 +146,7 @@ class CircuitBreakerMetrics:
 
 class CircuitBreakerOpenError(Exception):
     """Exception raised when circuit breaker is open."""
+
     def __init__(self, message: str = "Circuit breaker is open"):
         super().__init__(message)
         self.message = message
@@ -151,15 +155,15 @@ class CircuitBreakerOpenError(Exception):
 class MCPCircuitBreaker:
     """
     Circuit breaker implementation for MCP operations.
-    
+
     Provides resilience against failing MCP servers by implementing the
     circuit breaker pattern with automatic recovery and monitoring.
     """
-    
+
     def __init__(self, config: Optional[CircuitBreakerConfig] = None):
         """
         Initialize the circuit breaker.
-        
+
         Args:
             config: Circuit breaker configuration
         """
@@ -171,14 +175,14 @@ class MCPCircuitBreaker:
         self.failure_times: List[float] = []
         self.lock = asyncio.Lock()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-        
+
         self.logger.info(f"Initialized circuit breaker with config: {self.config}")
-    
+
     async def __aenter__(self):
         """Async context manager entry."""
         await self._check_state()
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
         if exc_type is None:
@@ -187,49 +191,49 @@ class MCPCircuitBreaker:
             await self._record_failure()
         # Don't suppress exceptions
         return False
-    
+
     @asynccontextmanager
     async def protect(self, operation: Callable):
         """
         Protect an operation with the circuit breaker.
-        
+
         Args:
             operation: Async callable to protect
-            
+
         Returns:
             Result of the operation
-            
+
         Raises:
             CircuitBreakerOpenError: If circuit is open
             Exception: Any exception from the protected operation
         """
         async with self:
             return await operation()
-    
+
     async def call(self, operation: Callable, *args, **kwargs):
         """
         Call an operation through the circuit breaker.
-        
+
         Args:
             operation: Async callable to execute
             *args: Positional arguments for operation
             **kwargs: Keyword arguments for operation
-            
+
         Returns:
             Result of the operation
-            
+
         Raises:
             CircuitBreakerOpenError: If circuit is open
             Exception: Any exception from the operation
         """
         async with self:
             return await operation(*args, **kwargs)
-    
+
     async def _check_state(self):
         """Check and update circuit breaker state."""
         async with self.lock:
             current_time = time.time()
-            
+
             if self.state == CircuitBreakerState.OPEN:
                 # Check if recovery timeout has passed
                 time_since_open = current_time - self.metrics.state_change_time
@@ -239,30 +243,30 @@ class MCPCircuitBreaker:
                     raise CircuitBreakerOpenError(
                         f"Circuit breaker is open. Recovery in {self.config.recovery_timeout - time_since_open:.1f}s"
                     )
-            
+
             elif self.state == CircuitBreakerState.HALF_OPEN:
                 # Check if we've exceeded half-open call limit
                 if self.half_open_calls >= self.config.half_open_max_calls:
                     self._transition_to_open()
                     raise CircuitBreakerOpenError("Half-open call limit exceeded")
-                
+
                 self.half_open_calls += 1
-            
+
             # Update metrics
             self.metrics.total_requests += 1
-    
+
     async def _record_success(self):
         """Record a successful operation."""
         async with self.lock:
             self.metrics.successful_requests += 1
-            
+
             if self.state == CircuitBreakerState.HALF_OPEN:
                 self.half_open_successes += 1
-                
+
                 # Check if we have enough successes to close the circuit
                 if self.half_open_successes >= self.config.success_threshold:
                     self._transition_to_closed()
-    
+
     async def _record_failure(self):
         """Record a failed operation."""
         async with self.lock:
@@ -270,40 +274,40 @@ class MCPCircuitBreaker:
             self.metrics.failed_requests += 1
             self.metrics.last_failure_time = current_time
             self.failure_times.append(current_time)
-            
+
             # Clean old failure times outside monitoring window
             cutoff_time = current_time - self.config.monitoring_window
             self.failure_times = [t for t in self.failure_times if t > cutoff_time]
-            
+
             if self.state == CircuitBreakerState.CLOSED:
                 # Check if we should open the circuit
                 if self._should_open_circuit():
                     self._transition_to_open()
-            
+
             elif self.state == CircuitBreakerState.HALF_OPEN:
                 # Any failure in half-open state opens the circuit
                 self._transition_to_open()
-    
+
     def _should_open_circuit(self) -> bool:
         """
         Determine if the circuit should be opened based on failure rate.
-        
+
         Returns:
             True if circuit should be opened
         """
         # Check simple failure threshold
         if len(self.failure_times) >= self.config.failure_threshold:
             return True
-        
+
         # Check failure rate if we have minimum throughput
         if self.metrics.total_requests >= self.config.minimum_throughput:
             failure_rate = self.metrics.failed_requests / self.metrics.total_requests
             # Open if failure rate > 50% and we have recent failures
             if failure_rate > 0.5 and len(self.failure_times) > 0:
                 return True
-        
+
         return False
-    
+
     def _transition_to_open(self):
         """Transition circuit breaker to open state."""
         self.logger.warning("Circuit breaker opening due to failures")
@@ -313,16 +317,18 @@ class MCPCircuitBreaker:
         self.metrics.state_change_time = time.time()
         self.half_open_calls = 0
         self.half_open_successes = 0
-    
+
     def _transition_to_half_open(self):
         """Transition circuit breaker to half-open state."""
-        self.logger.info("Circuit breaker transitioning to half-open for recovery testing")
+        self.logger.info(
+            "Circuit breaker transitioning to half-open for recovery testing"
+        )
         self.state = CircuitBreakerState.HALF_OPEN
         self.metrics.current_state = CircuitBreakerState.HALF_OPEN
         self.metrics.state_change_time = time.time()
         self.half_open_calls = 0
         self.half_open_successes = 0
-    
+
     def _transition_to_closed(self):
         """Transition circuit breaker to closed state."""
         self.logger.info("Circuit breaker closing - service recovered")
@@ -333,27 +339,27 @@ class MCPCircuitBreaker:
         self.half_open_successes = 0
         # Reset failure tracking
         self.failure_times.clear()
-    
+
     def get_state(self) -> CircuitBreakerState:
         """Get current circuit breaker state."""
         return self.state
-    
+
     def get_metrics(self) -> CircuitBreakerMetrics:
         """Get circuit breaker metrics."""
         return self.metrics
-    
+
     def is_closed(self) -> bool:
         """Check if circuit breaker is closed (normal operation)."""
         return self.state == CircuitBreakerState.CLOSED
-    
+
     def is_open(self) -> bool:
         """Check if circuit breaker is open (failing fast)."""
         return self.state == CircuitBreakerState.OPEN
-    
+
     def is_half_open(self) -> bool:
         """Check if circuit breaker is half-open (testing recovery)."""
         return self.state == CircuitBreakerState.HALF_OPEN
-    
+
     def reset(self):
         """Reset circuit breaker to initial state."""
         self.logger.info("Resetting circuit breaker")
@@ -364,7 +370,9 @@ class MCPCircuitBreaker:
         self.failure_times.clear()
 
 
-def create_circuit_breaker_from_config(config: Dict[str, Any]) -> Optional[MCPCircuitBreaker]:
+def create_circuit_breaker_from_config(
+    config: Dict[str, Any]
+) -> Optional[MCPCircuitBreaker]:
     """
     Create a circuit breaker from configuration dictionary.
 
@@ -381,7 +389,8 @@ def create_circuit_breaker_from_config(config: Dict[str, Any]) -> Optional[MCPCi
 
     # Import MCP exceptions for expected_exceptions
     try:
-        from .mcp_transport import MCPConnectionError, MCPTimeoutError, MCPServerError
+        from .mcp_transport import MCPConnectionError, MCPServerError, MCPTimeoutError
+
         expected_exceptions = (MCPConnectionError, MCPTimeoutError, MCPServerError)
     except ImportError:
         expected_exceptions = (Exception,)
@@ -393,7 +402,7 @@ def create_circuit_breaker_from_config(config: Dict[str, Any]) -> Optional[MCPCi
         expected_exceptions=expected_exceptions,
         success_threshold=cb_config.get("success_threshold", 2),
         monitoring_window=cb_config.get("monitoring_window", 60.0),
-        minimum_throughput=cb_config.get("minimum_throughput", 10)
+        minimum_throughput=cb_config.get("minimum_throughput", 10),
     )
 
     return MCPCircuitBreaker(circuit_config)

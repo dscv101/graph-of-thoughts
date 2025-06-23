@@ -72,11 +72,18 @@ from mcp.server.stdio import stdio_server
 
 # Graph of Thoughts imports
 from graph_of_thoughts.operations import (
-    Generate, Score, ValidateAndImprove, Improve, Aggregate,
-    KeepBestN, KeepValid, Selector, Operation
+    Aggregate,
+    Generate,
+    Improve,
+    KeepBestN,
+    KeepValid,
+    Operation,
+    Score,
+    Selector,
+    ValidateAndImprove,
 )
-from graph_of_thoughts.operations.thought import Thought
 from graph_of_thoughts.operations.graph_of_operations import GraphOfOperations
+from graph_of_thoughts.operations.thought import Thought
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -86,30 +93,31 @@ logger = logging.getLogger(__name__)
 SERVER_NAME = "graph-of-thoughts"
 SERVER_VERSION = "0.0.3"
 
+
 class GraphOfThoughtsServer:
     """
     Main MCP server class that exposes Graph of Thoughts functionality.
-    
+
     This class implements the MCP server interface and provides tools, resources,
     and prompts for Graph of Thoughts operations. It manages the execution context
     and maintains state for ongoing reasoning processes.
     """
-    
+
     def __init__(self):
         """Initialize the Graph of Thoughts MCP server."""
         self.server = Server(SERVER_NAME)
         self.execution_results: Dict[str, Any] = {}
         self.active_operations: Dict[str, GraphOfOperations] = {}
         self.prompt_templates: Dict[str, Dict[str, Any]] = {}
-        
+
         # Initialize prompt templates
         self._initialize_prompt_templates()
-        
+
         # Register MCP handlers
         self._register_tools()
         self._register_resources()
         self._register_prompts()
-    
+
     def _initialize_prompt_templates(self):
         """Initialize the built-in prompt templates."""
         self.prompt_templates = {
@@ -120,30 +128,30 @@ class GraphOfThoughtsServer:
                     {
                         "name": "problem",
                         "description": "The problem statement to analyze",
-                        "required": True
+                        "required": True,
                     },
                     {
                         "name": "domain",
                         "description": "Problem domain (e.g., math, coding, reasoning)",
-                        "required": False
-                    }
-                ]
+                        "required": False,
+                    },
+                ],
             },
             "generate-solutions": {
-                "name": "generate-solutions", 
+                "name": "generate-solutions",
                 "description": "Generate multiple solution approaches using Graph of Thoughts",
                 "arguments": [
                     {
                         "name": "problem",
                         "description": "The problem to solve",
-                        "required": True
+                        "required": True,
                     },
                     {
                         "name": "num_approaches",
                         "description": "Number of different approaches to generate",
-                        "required": False
-                    }
-                ]
+                        "required": False,
+                    },
+                ],
             },
             "evaluate-options": {
                 "name": "evaluate-options",
@@ -152,20 +160,20 @@ class GraphOfThoughtsServer:
                     {
                         "name": "options",
                         "description": "List of options to evaluate",
-                        "required": True
+                        "required": True,
                     },
                     {
                         "name": "criteria",
                         "description": "Evaluation criteria",
-                        "required": False
-                    }
-                ]
-            }
+                        "required": False,
+                    },
+                ],
+            },
         }
-    
+
     def _register_tools(self):
         """Register MCP tools for Graph of Thoughts operations."""
-        
+
         @self.server.list_tools()
         async def list_tools() -> List[types.Tool]:
             """List all available Graph of Thoughts tools."""
@@ -178,21 +186,21 @@ class GraphOfThoughtsServer:
                         "properties": {
                             "task": {
                                 "type": "string",
-                                "description": "The complex task to break down"
+                                "description": "The complex task to break down",
                             },
                             "max_subtasks": {
-                                "type": "integer", 
+                                "type": "integer",
                                 "description": "Maximum number of subtasks to generate",
-                                "default": 5
+                                "default": 5,
                             },
                             "domain": {
                                 "type": "string",
                                 "description": "Task domain for context (e.g., 'programming', 'math', 'analysis')",
-                                "default": "general"
-                            }
+                                "default": "general",
+                            },
                         },
-                        "required": ["task"]
-                    }
+                        "required": ["task"],
+                    },
                 ),
                 types.Tool(
                     name="generate_thoughts",
@@ -202,21 +210,21 @@ class GraphOfThoughtsServer:
                         "properties": {
                             "problem": {
                                 "type": "string",
-                                "description": "The problem to generate thoughts for"
+                                "description": "The problem to generate thoughts for",
                             },
                             "num_thoughts": {
                                 "type": "integer",
                                 "description": "Number of different thoughts to generate",
-                                "default": 3
+                                "default": 3,
                             },
                             "approach_type": {
-                                "type": "string", 
+                                "type": "string",
                                 "description": "Type of approach (e.g., 'analytical', 'creative', 'systematic')",
-                                "default": "analytical"
-                            }
+                                "default": "analytical",
+                            },
                         },
-                        "required": ["problem"]
-                    }
+                        "required": ["problem"],
+                    },
                 ),
                 types.Tool(
                     name="score_thoughts",
@@ -227,16 +235,16 @@ class GraphOfThoughtsServer:
                             "thoughts": {
                                 "type": "array",
                                 "items": {"type": "string"},
-                                "description": "List of thoughts to score"
+                                "description": "List of thoughts to score",
                             },
                             "criteria": {
                                 "type": "string",
                                 "description": "Scoring criteria",
-                                "default": "feasibility, effectiveness, and clarity"
-                            }
+                                "default": "feasibility, effectiveness, and clarity",
+                            },
                         },
-                        "required": ["thoughts"]
-                    }
+                        "required": ["thoughts"],
+                    },
                 ),
                 types.Tool(
                     name="validate_and_improve",
@@ -246,21 +254,21 @@ class GraphOfThoughtsServer:
                         "properties": {
                             "solution": {
                                 "type": "string",
-                                "description": "The solution to validate and improve"
+                                "description": "The solution to validate and improve",
                             },
                             "validation_criteria": {
                                 "type": "string",
                                 "description": "Criteria for validation",
-                                "default": "correctness, completeness, and efficiency"
+                                "default": "correctness, completeness, and efficiency",
                             },
                             "max_iterations": {
                                 "type": "integer",
                                 "description": "Maximum improvement iterations",
-                                "default": 3
-                            }
+                                "default": 3,
+                            },
                         },
-                        "required": ["solution"]
-                    }
+                        "required": ["solution"],
+                    },
                 ),
                 types.Tool(
                     name="aggregate_results",
@@ -271,16 +279,16 @@ class GraphOfThoughtsServer:
                             "results": {
                                 "type": "array",
                                 "items": {"type": "string"},
-                                "description": "List of results to aggregate"
+                                "description": "List of results to aggregate",
                             },
                             "aggregation_method": {
                                 "type": "string",
                                 "description": "Method for aggregation (e.g., 'consensus', 'best_of', 'synthesis')",
-                                "default": "synthesis"
-                            }
+                                "default": "synthesis",
+                            },
                         },
-                        "required": ["results"]
-                    }
+                        "required": ["results"],
+                    },
                 ),
                 types.Tool(
                     name="create_reasoning_chain",
@@ -290,26 +298,28 @@ class GraphOfThoughtsServer:
                         "properties": {
                             "problem": {
                                 "type": "string",
-                                "description": "The problem to solve with a reasoning chain"
+                                "description": "The problem to solve with a reasoning chain",
                             },
                             "workflow_type": {
                                 "type": "string",
                                 "description": "Type of workflow (e.g., 'generate_score_select', 'validate_improve_aggregate')",
-                                "default": "generate_score_select"
+                                "default": "generate_score_select",
                             },
                             "num_branches": {
                                 "type": "integer",
                                 "description": "Number of parallel reasoning branches",
-                                "default": 3
-                            }
+                                "default": 3,
+                            },
                         },
-                        "required": ["problem"]
-                    }
-                )
+                        "required": ["problem"],
+                    },
+                ),
             ]
 
         @self.server.call_tool()
-        async def call_tool(name: str, arguments: Dict[str, Any]) -> List[types.TextContent]:
+        async def call_tool(
+            name: str, arguments: Dict[str, Any]
+        ) -> List[types.TextContent]:
             """Handle tool execution requests."""
             try:
                 if name == "break_down_task":
@@ -328,26 +338,33 @@ class GraphOfThoughtsServer:
                     raise ValueError(f"Unknown tool: {name}")
             except Exception as e:
                 logger.error(f"Error executing tool {name}: {e}")
-                return [types.TextContent(
-                    type="text",
-                    text=f"Error executing {name}: {str(e)}"
-                )]
+                return [
+                    types.TextContent(
+                        type="text", text=f"Error executing {name}: {str(e)}"
+                    )
+                ]
 
-    async def _break_down_task(self, arguments: Dict[str, Any]) -> List[types.TextContent]:
+    async def _break_down_task(
+        self, arguments: Dict[str, Any]
+    ) -> List[types.TextContent]:
         """Break down a complex task into subtasks."""
         # Validate required parameters
         if "task" not in arguments:
-            return [types.TextContent(
-                type="text",
-                text="Error: Missing required parameter 'task'. Please provide a task description to break down."
-            )]
+            return [
+                types.TextContent(
+                    type="text",
+                    text="Error: Missing required parameter 'task'. Please provide a task description to break down.",
+                )
+            ]
 
         task = arguments["task"]
         if not isinstance(task, str) or not task.strip():
-            return [types.TextContent(
-                type="text",
-                text="Error: Parameter 'task' must be a non-empty string."
-            )]
+            return [
+                types.TextContent(
+                    type="text",
+                    text="Error: Parameter 'task' must be a non-empty string.",
+                )
+            ]
 
         # Validate optional parameters
         try:
@@ -370,14 +387,14 @@ class GraphOfThoughtsServer:
                 "2. Design the solution architecture",
                 "3. Implement core functionality",
                 "4. Add error handling and edge cases",
-                "5. Test and validate the solution"
+                "5. Test and validate the solution",
             ]
         elif "math" in domain.lower() or "calculation" in task.lower():
             subtasks = [
                 "1. Identify the mathematical concepts involved",
                 "2. Break down the problem into smaller parts",
                 "3. Apply relevant formulas or methods",
-                "4. Verify the solution step by step"
+                "4. Verify the solution step by step",
             ]
         else:
             # General task breakdown
@@ -386,7 +403,7 @@ class GraphOfThoughtsServer:
                 "2. Gather necessary information",
                 "3. Identify possible approaches",
                 "4. Execute the chosen approach",
-                "5. Review and refine the result"
+                "5. Review and refine the result",
             ]
 
         # Limit to max_subtasks
@@ -397,7 +414,7 @@ class GraphOfThoughtsServer:
             "original_task": task,
             "domain": domain,
             "subtasks": subtasks,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         # Store result for later access
@@ -412,21 +429,27 @@ class GraphOfThoughtsServer:
 
         return [types.TextContent(type="text", text=response_text)]
 
-    async def _generate_thoughts(self, arguments: Dict[str, Any]) -> List[types.TextContent]:
+    async def _generate_thoughts(
+        self, arguments: Dict[str, Any]
+    ) -> List[types.TextContent]:
         """Generate multiple thought approaches for a problem."""
         # Validate required parameters
         if "problem" not in arguments:
-            return [types.TextContent(
-                type="text",
-                text="Error: Missing required parameter 'problem'. Please provide a problem description."
-            )]
+            return [
+                types.TextContent(
+                    type="text",
+                    text="Error: Missing required parameter 'problem'. Please provide a problem description.",
+                )
+            ]
 
         problem = arguments["problem"]
         if not isinstance(problem, str) or not problem.strip():
-            return [types.TextContent(
-                type="text",
-                text="Error: Parameter 'problem' must be a non-empty string."
-            )]
+            return [
+                types.TextContent(
+                    type="text",
+                    text="Error: Parameter 'problem' must be a non-empty string.",
+                )
+            ]
 
         # Validate optional parameters
         try:
@@ -447,26 +470,26 @@ class GraphOfThoughtsServer:
             thoughts = [
                 f"Analytical Approach 1: Break down '{problem}' into its core components and analyze each systematically",
                 f"Analytical Approach 2: Apply logical reasoning and established frameworks to solve '{problem}'",
-                f"Analytical Approach 3: Use data-driven analysis and evidence-based methods for '{problem}'"
+                f"Analytical Approach 3: Use data-driven analysis and evidence-based methods for '{problem}'",
             ]
         elif approach_type == "creative":
             thoughts = [
                 f"Creative Approach 1: Think outside the box and explore unconventional solutions for '{problem}'",
                 f"Creative Approach 2: Use analogies and metaphors to find innovative approaches to '{problem}'",
-                f"Creative Approach 3: Combine ideas from different domains to create novel solutions for '{problem}'"
+                f"Creative Approach 3: Combine ideas from different domains to create novel solutions for '{problem}'",
             ]
         elif approach_type == "systematic":
             thoughts = [
                 f"Systematic Approach 1: Follow a step-by-step methodology to address '{problem}'",
                 f"Systematic Approach 2: Use established best practices and proven techniques for '{problem}'",
-                f"Systematic Approach 3: Apply structured problem-solving frameworks to '{problem}'"
+                f"Systematic Approach 3: Apply structured problem-solving frameworks to '{problem}'",
             ]
         else:
             # Default mixed approach
             thoughts = [
                 f"Approach 1: Analyze the problem '{problem}' systematically and identify key factors",
                 f"Approach 2: Consider creative alternatives and innovative solutions for '{problem}'",
-                f"Approach 3: Apply proven methodologies while remaining open to new insights for '{problem}'"
+                f"Approach 3: Apply proven methodologies while remaining open to new insights for '{problem}'",
             ]
 
         # Limit to requested number of thoughts
@@ -477,7 +500,7 @@ class GraphOfThoughtsServer:
             "problem": problem,
             "approach_type": approach_type,
             "thoughts": thoughts,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         self.execution_results[operation_id] = result
@@ -491,38 +514,52 @@ class GraphOfThoughtsServer:
 
         return [types.TextContent(type="text", text=response_text)]
 
-    async def _score_thoughts(self, arguments: Dict[str, Any]) -> List[types.TextContent]:
+    async def _score_thoughts(
+        self, arguments: Dict[str, Any]
+    ) -> List[types.TextContent]:
         """Score and evaluate different thoughts."""
         # Validate required parameters
         if "thoughts" not in arguments:
-            return [types.TextContent(
-                type="text",
-                text="Error: Missing required parameter 'thoughts'. Please provide a list of thoughts to score."
-            )]
+            return [
+                types.TextContent(
+                    type="text",
+                    text="Error: Missing required parameter 'thoughts'. Please provide a list of thoughts to score.",
+                )
+            ]
 
         thoughts = arguments["thoughts"]
         if not isinstance(thoughts, list):
-            return [types.TextContent(
-                type="text",
-                text="Error: Parameter 'thoughts' must be a list of strings."
-            )]
+            return [
+                types.TextContent(
+                    type="text",
+                    text="Error: Parameter 'thoughts' must be a list of strings.",
+                )
+            ]
 
         if len(thoughts) == 0:
-            return [types.TextContent(
-                type="text",
-                text="No thoughts provided to score. Please provide at least one thought."
-            )]
+            return [
+                types.TextContent(
+                    type="text",
+                    text="No thoughts provided to score. Please provide at least one thought.",
+                )
+            ]
 
         # Convert all thoughts to strings and filter out empty ones
-        thoughts = [str(thought).strip() for thought in thoughts if str(thought).strip()]
+        thoughts = [
+            str(thought).strip() for thought in thoughts if str(thought).strip()
+        ]
 
         if len(thoughts) == 0:
-            return [types.TextContent(
-                type="text",
-                text="No valid thoughts provided to score. Please provide non-empty thought descriptions."
-            )]
+            return [
+                types.TextContent(
+                    type="text",
+                    text="No valid thoughts provided to score. Please provide non-empty thought descriptions.",
+                )
+            ]
 
-        criteria = str(arguments.get("criteria", "feasibility, effectiveness, and clarity"))
+        criteria = str(
+            arguments.get("criteria", "feasibility, effectiveness, and clarity")
+        )
 
         operation_id = str(uuid.uuid4())
 
@@ -536,19 +573,33 @@ class GraphOfThoughtsServer:
             length_factor = min(len(thought) / 100, 1.0) * 0.2
 
             # Keyword factor (presence of action words)
-            action_words = ["analyze", "implement", "design", "test", "validate", "create", "solve"]
-            keyword_factor = sum(1 for word in action_words if word.lower() in thought.lower()) * 0.1
+            action_words = [
+                "analyze",
+                "implement",
+                "design",
+                "test",
+                "validate",
+                "create",
+                "solve",
+            ]
+            keyword_factor = (
+                sum(1 for word in action_words if word.lower() in thought.lower()) * 0.1
+            )
 
             # Complexity factor (structured thoughts score higher)
-            complexity_factor = 0.2 if any(char in thought for char in ["1.", "2.", "3.", "-", "•"]) else 0.1
+            complexity_factor = (
+                0.2
+                if any(char in thought for char in ["1.", "2.", "3.", "-", "•"])
+                else 0.1
+            )
 
-            final_score = min(base_score + length_factor + keyword_factor + complexity_factor, 1.0)
+            final_score = min(
+                base_score + length_factor + keyword_factor + complexity_factor, 1.0
+            )
 
-            scored_thoughts.append({
-                "thought": thought,
-                "score": round(final_score, 2),
-                "rank": i + 1
-            })
+            scored_thoughts.append(
+                {"thought": thought, "score": round(final_score, 2), "rank": i + 1}
+            )
 
         # Sort by score (highest first)
         scored_thoughts.sort(key=lambda x: x["score"], reverse=True)
@@ -561,7 +612,7 @@ class GraphOfThoughtsServer:
             "operation_id": operation_id,
             "criteria": criteria,
             "scored_thoughts": scored_thoughts,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         self.execution_results[operation_id] = result
@@ -578,10 +629,14 @@ class GraphOfThoughtsServer:
 
         return [types.TextContent(type="text", text=response_text)]
 
-    async def _validate_and_improve(self, arguments: Dict[str, Any]) -> List[types.TextContent]:
+    async def _validate_and_improve(
+        self, arguments: Dict[str, Any]
+    ) -> List[types.TextContent]:
         """Validate and improve a solution iteratively."""
         solution = arguments["solution"]
-        validation_criteria = arguments.get("validation_criteria", "correctness, completeness, and efficiency")
+        validation_criteria = arguments.get(
+            "validation_criteria", "correctness, completeness, and efficiency"
+        )
         max_iterations = arguments.get("max_iterations", 3)
 
         operation_id = str(uuid.uuid4())
@@ -598,7 +653,10 @@ class GraphOfThoughtsServer:
             if len(current_solution) < 50:
                 issues.append("Solution may be too brief and lack detail")
 
-            if not any(word in current_solution.lower() for word in ["step", "method", "approach", "process"]):
+            if not any(
+                word in current_solution.lower()
+                for word in ["step", "method", "approach", "process"]
+            ):
                 issues.append("Solution lacks clear methodology")
 
             if "?" in current_solution:
@@ -606,13 +664,15 @@ class GraphOfThoughtsServer:
 
             # If no issues found, we're done
             if not issues:
-                iterations.append({
-                    "iteration": iteration + 1,
-                    "solution": current_solution,
-                    "issues": [],
-                    "improvements": [],
-                    "status": "validated"
-                })
+                iterations.append(
+                    {
+                        "iteration": iteration + 1,
+                        "solution": current_solution,
+                        "issues": [],
+                        "improvements": [],
+                        "status": "validated",
+                    }
+                )
                 break
 
             # Generate improvements
@@ -629,13 +689,15 @@ class GraphOfThoughtsServer:
                 improvements.append("Replace uncertainties with definitive statements")
                 current_solution = current_solution.replace("?", ".")
 
-            iterations.append({
-                "iteration": iteration + 1,
-                "solution": current_solution,
-                "issues": issues,
-                "improvements": improvements,
-                "status": "improved"
-            })
+            iterations.append(
+                {
+                    "iteration": iteration + 1,
+                    "solution": current_solution,
+                    "issues": issues,
+                    "improvements": improvements,
+                    "status": "improved",
+                }
+            )
 
         result = {
             "operation_id": operation_id,
@@ -643,7 +705,7 @@ class GraphOfThoughtsServer:
             "validation_criteria": validation_criteria,
             "iterations": iterations,
             "final_solution": current_solution,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         self.execution_results[operation_id] = result
@@ -655,10 +717,14 @@ class GraphOfThoughtsServer:
 
         for iteration_data in iterations:
             response_text += f"Iteration {iteration_data['iteration']} ({iteration_data['status']}):\n"
-            if iteration_data['issues']:
-                response_text += f"  Issues Found: {', '.join(iteration_data['issues'])}\n"
-            if iteration_data['improvements']:
-                response_text += f"  Improvements: {', '.join(iteration_data['improvements'])}\n"
+            if iteration_data["issues"]:
+                response_text += (
+                    f"  Issues Found: {', '.join(iteration_data['issues'])}\n"
+                )
+            if iteration_data["improvements"]:
+                response_text += (
+                    f"  Improvements: {', '.join(iteration_data['improvements'])}\n"
+                )
             response_text += f"  Solution: {iteration_data['solution'][:100]}...\n\n"
 
         response_text += f"Final Solution: {current_solution}\n\n"
@@ -666,7 +732,9 @@ class GraphOfThoughtsServer:
 
         return [types.TextContent(type="text", text=response_text)]
 
-    async def _aggregate_results(self, arguments: Dict[str, Any]) -> List[types.TextContent]:
+    async def _aggregate_results(
+        self, arguments: Dict[str, Any]
+    ) -> List[types.TextContent]:
         """Aggregate multiple results into a final solution."""
         results = arguments["results"]
         aggregation_method = arguments.get("aggregation_method", "synthesis")
@@ -674,7 +742,11 @@ class GraphOfThoughtsServer:
         operation_id = str(uuid.uuid4())
 
         if not results:
-            return [types.TextContent(type="text", text="No results provided for aggregation")]
+            return [
+                types.TextContent(
+                    type="text", text="No results provided for aggregation"
+                )
+            ]
 
         # Perform aggregation based on method
         if aggregation_method == "consensus":
@@ -698,10 +770,14 @@ class GraphOfThoughtsServer:
             # Combine key points from all results
             aggregated = "Synthesized solution combining all approaches:\n\n"
             for i, result in enumerate(results, 1):
-                aggregated += f"{i}. {result[:100]}{'...' if len(result) > 100 else ''}\n"
+                aggregated += (
+                    f"{i}. {result[:100]}{'...' if len(result) > 100 else ''}\n"
+                )
 
             aggregated += "\nIntegrated approach: "
-            aggregated += "This solution incorporates the strengths of all provided approaches, "
+            aggregated += (
+                "This solution incorporates the strengths of all provided approaches, "
+            )
             aggregated += "creating a comprehensive strategy that addresses multiple perspectives."
 
         result_data = {
@@ -709,7 +785,7 @@ class GraphOfThoughtsServer:
             "input_results": results,
             "aggregation_method": aggregation_method,
             "aggregated_result": aggregated,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         self.execution_results[operation_id] = result_data
@@ -722,7 +798,9 @@ class GraphOfThoughtsServer:
 
         return [types.TextContent(type="text", text=response_text)]
 
-    async def _create_reasoning_chain(self, arguments: Dict[str, Any]) -> List[types.TextContent]:
+    async def _create_reasoning_chain(
+        self, arguments: Dict[str, Any]
+    ) -> List[types.TextContent]:
         """Create a complete reasoning workflow."""
         problem = arguments["problem"]
         workflow_type = arguments.get("workflow_type", "generate_score_select")
@@ -735,82 +813,102 @@ class GraphOfThoughtsServer:
 
         if workflow_type == "generate_score_select":
             # Step 1: Generate multiple approaches
-            generate_result = await self._generate_thoughts({
-                "problem": problem,
-                "num_thoughts": num_branches,
-                "approach_type": "analytical"
-            })
+            generate_result = await self._generate_thoughts(
+                {
+                    "problem": problem,
+                    "num_thoughts": num_branches,
+                    "approach_type": "analytical",
+                }
+            )
 
             # Extract thoughts from the result
-            thoughts = [f"Approach {i+1}: Analytical solution for {problem}" for i in range(num_branches)]
+            thoughts = [
+                f"Approach {i+1}: Analytical solution for {problem}"
+                for i in range(num_branches)
+            ]
 
-            chain_steps.append({
-                "step": 1,
-                "operation": "generate",
-                "description": f"Generated {num_branches} different approaches",
-                "result": thoughts
-            })
+            chain_steps.append(
+                {
+                    "step": 1,
+                    "operation": "generate",
+                    "description": f"Generated {num_branches} different approaches",
+                    "result": thoughts,
+                }
+            )
 
             # Step 2: Score the approaches
-            score_result = await self._score_thoughts({
-                "thoughts": thoughts,
-                "criteria": "feasibility and effectiveness"
-            })
+            score_result = await self._score_thoughts(
+                {"thoughts": thoughts, "criteria": "feasibility and effectiveness"}
+            )
 
-            chain_steps.append({
-                "step": 2,
-                "operation": "score",
-                "description": "Scored all approaches",
-                "result": "Approaches ranked by feasibility and effectiveness"
-            })
+            chain_steps.append(
+                {
+                    "step": 2,
+                    "operation": "score",
+                    "description": "Scored all approaches",
+                    "result": "Approaches ranked by feasibility and effectiveness",
+                }
+            )
 
             # Step 3: Select best approach
             best_approach = thoughts[0]  # Simplified selection
-            chain_steps.append({
-                "step": 3,
-                "operation": "select",
-                "description": "Selected best approach",
-                "result": best_approach
-            })
+            chain_steps.append(
+                {
+                    "step": 3,
+                    "operation": "select",
+                    "description": "Selected best approach",
+                    "result": best_approach,
+                }
+            )
 
         elif workflow_type == "validate_improve_aggregate":
             # Step 1: Generate initial solution
             initial_solution = f"Initial solution approach for: {problem}"
-            chain_steps.append({
-                "step": 1,
-                "operation": "generate",
-                "description": "Generated initial solution",
-                "result": initial_solution
-            })
+            chain_steps.append(
+                {
+                    "step": 1,
+                    "operation": "generate",
+                    "description": "Generated initial solution",
+                    "result": initial_solution,
+                }
+            )
 
             # Step 2: Validate and improve
-            validate_result = await self._validate_and_improve({
-                "solution": initial_solution,
-                "validation_criteria": "correctness and completeness",
-                "max_iterations": 2
-            })
+            validate_result = await self._validate_and_improve(
+                {
+                    "solution": initial_solution,
+                    "validation_criteria": "correctness and completeness",
+                    "max_iterations": 2,
+                }
+            )
 
             improved_solution = f"Improved solution for: {problem}"
-            chain_steps.append({
-                "step": 2,
-                "operation": "validate_improve",
-                "description": "Validated and improved solution",
-                "result": improved_solution
-            })
+            chain_steps.append(
+                {
+                    "step": 2,
+                    "operation": "validate_improve",
+                    "description": "Validated and improved solution",
+                    "result": improved_solution,
+                }
+            )
 
             # Step 3: Generate alternative and aggregate
             alternative = f"Alternative approach for: {problem}"
-            aggregate_result = await self._aggregate_results({
-                "results": [improved_solution, alternative],
-                "aggregation_method": "synthesis"
-            })
+            aggregate_result = await self._aggregate_results(
+                {
+                    "results": [improved_solution, alternative],
+                    "aggregation_method": "synthesis",
+                }
+            )
 
-            chain_steps.append({
-                "step": 3,
-                "operation": "aggregate",
-                "description": "Aggregated multiple solutions",
-                "result": "Synthesized final solution"
-            })
+            chain_steps.append(
+                {
+                    "step": 3,
+                    "operation": "aggregate",
+                    "description": "Aggregated multiple solutions",
+                    "result": "Synthesized final solution",
+                }
+            )
 
         result_data = {
             "operation_id": operation_id,
@@ -818,7 +916,7 @@ class GraphOfThoughtsServer:
             "workflow_type": workflow_type,
             "num_branches": num_branches,
             "chain_steps": chain_steps,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         self.execution_results[operation_id] = result_data
@@ -848,26 +946,26 @@ class GraphOfThoughtsServer:
                     uri="got://operations/results",
                     name="Operation Results",
                     description="Access to Graph of Thoughts operation execution results",
-                    mimeType="application/json"
+                    mimeType="application/json",
                 ),
                 types.Resource(
                     uri="got://templates/prompts",
                     name="Prompt Templates",
                     description="Reusable prompt templates for different domains",
-                    mimeType="application/json"
+                    mimeType="application/json",
                 ),
                 types.Resource(
                     uri="got://configs/examples",
                     name="Example Configurations",
                     description="Example configurations and workflows",
-                    mimeType="application/json"
+                    mimeType="application/json",
                 ),
                 types.Resource(
                     uri="got://logs/execution",
                     name="Execution Logs",
                     description="Execution logs and debugging information",
-                    mimeType="text/plain"
-                )
+                    mimeType="text/plain",
+                ),
             ]
 
         @self.server.read_resource()
@@ -881,7 +979,7 @@ class GraphOfThoughtsServer:
                     "problem_analysis": "Analyze the following problem step by step: {problem}",
                     "solution_generation": "Generate {num_solutions} different solutions for: {problem}",
                     "solution_evaluation": "Evaluate these solutions based on {criteria}: {solutions}",
-                    "improvement_suggestion": "Improve this solution: {solution}. Focus on {aspects}."
+                    "improvement_suggestion": "Improve this solution: {solution}. Focus on {aspects}.",
                 }
                 return json.dumps(templates, indent=2)
 
@@ -890,20 +988,22 @@ class GraphOfThoughtsServer:
                     "simple_workflow": {
                         "description": "Basic generate-score-select workflow",
                         "steps": ["generate", "score", "select"],
-                        "parameters": {"num_branches": 3}
+                        "parameters": {"num_branches": 3},
                     },
                     "validation_workflow": {
                         "description": "Validation and improvement workflow",
                         "steps": ["generate", "validate", "improve", "aggregate"],
-                        "parameters": {"max_iterations": 3}
-                    }
+                        "parameters": {"max_iterations": 3},
+                    },
                 }
                 return json.dumps(examples, indent=2)
 
             elif uri == "got://logs/execution":
                 log_entries = []
                 for op_id, result in self.execution_results.items():
-                    log_entries.append(f"[{result.get('timestamp', 'unknown')}] Operation {op_id}: {result}")
+                    log_entries.append(
+                        f"[{result.get('timestamp', 'unknown')}] Operation {op_id}: {result}"
+                    )
                 return "\n".join(log_entries)
 
             else:
@@ -923,14 +1023,18 @@ class GraphOfThoughtsServer:
                         types.PromptArgument(
                             name=arg["name"],
                             description=arg["description"],
-                            required=arg["required"]
-                        ) for arg in template["arguments"]
-                    ]
-                ) for template in self.prompt_templates.values()
+                            required=arg["required"],
+                        )
+                        for arg in template["arguments"]
+                    ],
+                )
+                for template in self.prompt_templates.values()
             ]
 
         @self.server.get_prompt()
-        async def get_prompt(name: str, arguments: Optional[Dict[str, str]] = None) -> types.GetPromptResult:
+        async def get_prompt(
+            name: str, arguments: Optional[Dict[str, str]] = None
+        ) -> types.GetPromptResult:
             """Get a specific Graph of Thoughts prompt."""
             if name not in self.prompt_templates:
                 raise ValueError(f"Prompt not found: {name}")
@@ -958,10 +1062,10 @@ Please provide:
 3. Evaluation criteria for each approach
 4. Recommended solution path with reasoning
 
-Use systematic thinking and consider multiple perspectives."""
-                            )
+Use systematic thinking and consider multiple perspectives.""",
+                            ),
                         )
-                    ]
+                    ],
                 )
 
             elif name == "generate-solutions":
@@ -985,15 +1089,17 @@ For each approach, provide:
 3. Potential advantages
 4. Potential challenges or limitations
 
-Think creatively and consider diverse perspectives including analytical, creative, and systematic approaches."""
-                            )
+Think creatively and consider diverse perspectives including analytical, creative, and systematic approaches.""",
+                            ),
                         )
-                    ]
+                    ],
                 )
 
             elif name == "evaluate-options":
                 options = args.get("options", "")
-                criteria = args.get("criteria", "effectiveness, feasibility, and efficiency")
+                criteria = args.get(
+                    "criteria", "effectiveness, feasibility, and efficiency"
+                )
 
                 return types.GetPromptResult(
                     description="Systematic evaluation of solution options",
@@ -1016,10 +1122,10 @@ Please provide:
 4. Final recommendation with reasoning
 5. Risk assessment and mitigation strategies
 
-Use structured thinking and provide clear rationale for your evaluations."""
-                            )
+Use structured thinking and provide clear rationale for your evaluations.""",
+                            ),
                         )
-                    ]
+                    ],
                 )
 
             else:
@@ -1045,7 +1151,7 @@ async def main():
             await got_server.server.run(
                 read_stream,
                 write_stream,
-                got_server.server.create_initialization_options()
+                got_server.server.create_initialization_options(),
             )
 
     except KeyboardInterrupt:
@@ -1059,7 +1165,7 @@ if __name__ == "__main__":
     # Configure logging for standalone execution
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
     # Run the server

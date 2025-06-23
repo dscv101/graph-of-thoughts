@@ -43,18 +43,20 @@ from graph_of_thoughts.mcp_server import main as server_main
 def setup_logging(debug: bool = False):
     """Configure logging for the MCP server."""
     level = logging.DEBUG if debug else logging.INFO
-    
+
     logging.basicConfig(
         level=level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
-            logging.StreamHandler(sys.stderr)  # Use stderr to avoid interfering with stdio transport
-        ]
+            logging.StreamHandler(
+                sys.stderr
+            )  # Use stderr to avoid interfering with stdio transport
+        ],
     )
-    
+
     # Reduce noise from some libraries
-    logging.getLogger('httpx').setLevel(logging.WARNING)
-    logging.getLogger('anyio').setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("anyio").setLevel(logging.WARNING)
 
 
 def parse_args():
@@ -75,47 +77,34 @@ Examples:
 
     # Show server information
     python -m graph_of_thoughts --info
-        """
+        """,
     )
-    
+
     parser.add_argument(
         "--transport",
         choices=["stdio", "http"],
         default="stdio",
-        help="Transport mechanism to use (default: stdio)"
+        help="Transport mechanism to use (default: stdio)",
     )
-    
+
     parser.add_argument(
-        "--port",
-        type=int,
-        default=8080,
-        help="Port for HTTP transport (default: 8080)"
+        "--port", type=int, default=8080, help="Port for HTTP transport (default: 8080)"
     )
-    
+
     parser.add_argument(
         "--host",
         default="localhost",
-        help="Host for HTTP transport (default: localhost)"
+        help="Host for HTTP transport (default: localhost)",
     )
-    
+
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+
     parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Enable debug logging"
+        "--info", action="store_true", help="Show server information and exit"
     )
-    
-    parser.add_argument(
-        "--info",
-        action="store_true",
-        help="Show server information and exit"
-    )
-    
-    parser.add_argument(
-        "--version",
-        action="store_true",
-        help="Show version and exit"
-    )
-    
+
+    parser.add_argument("--version", action="store_true", help="Show version and exit")
+
     return parser.parse_args()
 
 
@@ -168,21 +157,21 @@ async def run_http_server(host: str, port: int):
 def main():
     """Main entry point for the command-line interface."""
     args = parse_args()
-    
+
     if args.version:
         show_version()
         return
-    
+
     if args.info:
         show_info()
         return
-    
+
     # Setup logging
     setup_logging(args.debug)
-    
+
     logger = logging.getLogger(__name__)
     logger.info("Starting Graph of Thoughts MCP Server")
-    
+
     try:
         if args.transport == "stdio":
             logger.info("Using stdio transport")
@@ -193,13 +182,14 @@ def main():
         else:
             logger.error(f"Unknown transport: {args.transport}")
             sys.exit(1)
-            
+
     except KeyboardInterrupt:
         logger.info("Server shutdown requested by user")
     except Exception as e:
         logger.error(f"Server failed to start: {e}")
         if args.debug:
             import traceback
+
             traceback.print_exc()
         sys.exit(1)
 

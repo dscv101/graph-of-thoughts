@@ -91,20 +91,21 @@ Example Usage:
 import asyncio
 import json
 import logging
+import statistics
 import time
 from collections import defaultdict, deque
 from contextlib import contextmanager
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union, Callable
 from threading import Lock
-import statistics
+from typing import Any, Callable, Dict, List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
 
 class MetricType(Enum):
     """Types of metrics that can be collected."""
+
     COUNTER = "counter"
     GAUGE = "gauge"
     HISTOGRAM = "histogram"
@@ -115,13 +116,14 @@ class MetricType(Enum):
 class MetricValue:
     """
     Individual metric value with metadata.
-    
+
     Attributes:
         value: The metric value
         timestamp: When the metric was recorded
         labels: Additional labels/tags for the metric
         metric_type: Type of metric
     """
+
     value: Union[int, float]
     timestamp: float = field(default_factory=time.time)
     labels: Dict[str, str] = field(default_factory=dict)
@@ -132,7 +134,7 @@ class MetricValue:
 class RequestMetrics:
     """
     Metrics for individual requests.
-    
+
     Attributes:
         method: The MCP method called
         start_time: Request start timestamp
@@ -142,6 +144,7 @@ class RequestMetrics:
         response_size: Size of response in bytes
         token_usage: Token usage information
     """
+
     method: str
     start_time: float
     end_time: Optional[float] = None
@@ -149,7 +152,7 @@ class RequestMetrics:
     error_type: Optional[str] = None
     response_size: int = 0
     token_usage: Dict[str, int] = field(default_factory=dict)
-    
+
     @property
     def duration_ms(self) -> float:
         """Get request duration in milliseconds."""
@@ -162,7 +165,7 @@ class RequestMetrics:
 class AggregatedMetrics:
     """
     Aggregated metrics for a time period.
-    
+
     Attributes:
         total_requests: Total number of requests
         successful_requests: Number of successful requests
@@ -174,6 +177,7 @@ class AggregatedMetrics:
         total_tokens: Total tokens used
         total_cost: Total estimated cost
     """
+
     total_requests: int = 0
     successful_requests: int = 0
     failed_requests: int = 0
@@ -189,11 +193,11 @@ class RequestTracker:
     """
     Context manager for tracking individual requests.
     """
-    
-    def __init__(self, metrics_collector: 'MCPMetricsCollector', method: str):
+
+    def __init__(self, metrics_collector: "MCPMetricsCollector", method: str):
         """
         Initialize request tracker.
-        
+
         Args:
             metrics_collector: The metrics collector instance
             method: The MCP method being tracked
@@ -201,51 +205,48 @@ class RequestTracker:
         self.metrics_collector = metrics_collector
         self.method = method
         self.start_time = time.time()
-        self.request_metrics = RequestMetrics(
-            method=method,
-            start_time=self.start_time
-        )
-    
+        self.request_metrics = RequestMetrics(method=method, start_time=self.start_time)
+
     def __enter__(self):
         """Context manager entry."""
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         self.request_metrics.end_time = time.time()
-        
+
         if exc_type is not None:
             self.record_error(exc_type.__name__)
-        
+
         self.metrics_collector._record_request(self.request_metrics)
-    
+
     def record_success(self, response: Optional[Dict[str, Any]] = None):
         """
         Record successful request completion.
-        
+
         Args:
             response: Optional response data for additional metrics
         """
         self.request_metrics.success = True
-        
+
         if response:
             # Extract response size
             response_str = json.dumps(response)
-            self.request_metrics.response_size = len(response_str.encode('utf-8'))
-            
+            self.request_metrics.response_size = len(response_str.encode("utf-8"))
+
             # Extract token usage if available
             metadata = response.get("metadata", {})
             if "usage" in metadata:
                 usage = metadata["usage"]
                 self.request_metrics.token_usage = {
                     "prompt_tokens": usage.get("prompt_tokens", 0),
-                    "completion_tokens": usage.get("completion_tokens", 0)
+                    "completion_tokens": usage.get("completion_tokens", 0),
                 }
-    
+
     def record_error(self, error_type: str):
         """
         Record request error.
-        
+
         Args:
             error_type: Type/name of the error
         """
@@ -256,15 +257,15 @@ class RequestTracker:
 class MCPMetricsCollector:
     """
     Comprehensive metrics collector for MCP operations.
-    
+
     Collects, aggregates, and exports metrics for monitoring and debugging
     MCP client performance and health.
     """
-    
+
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         """
         Initialize the metrics collector.
-        
+
         Args:
             config: Metrics configuration
         """
@@ -273,28 +274,32 @@ class MCPMetricsCollector:
         self.export_interval = self.config.get("export_interval", 60.0)
         self.export_format = self.config.get("export_format", "json")
         self.max_history_size = self.config.get("max_history_size", 1000)
-        self.include_detailed_timings = self.config.get("include_detailed_timings", False)
-        
+        self.include_detailed_timings = self.config.get(
+            "include_detailed_timings", False
+        )
+
         # Thread-safe storage
         self.lock = Lock()
-        
+
         # Request history and current metrics
         self.request_history: deque = deque(maxlen=self.max_history_size)
         self.method_metrics: Dict[str, List[RequestMetrics]] = defaultdict(list)
         self.error_counts: Dict[str, int] = defaultdict(int)
-        
+
         # Custom metrics
         self.custom_metrics: Dict[str, List[MetricValue]] = defaultdict(list)
-        
+
         # Export configuration
         self.export_callbacks: List[Callable] = []
         self.last_export_time = time.time()
-        
+
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-        
+
         if self.enabled:
-            self.logger.info(f"Initialized MCP metrics collector with config: {self.config}")
-    
+            self.logger.info(
+                f"Initialized MCP metrics collector with config: {self.config}"
+            )
+
     @contextmanager
     def track_request(self, method: str):
         """
@@ -348,9 +353,13 @@ class MCPMetricsCollector:
                     f"tokens={sum(request_metrics.token_usage.values())}"
                 )
 
-    def record_custom_metric(self, name: str, value: Union[int, float],
-                           metric_type: MetricType = MetricType.GAUGE,
-                           labels: Optional[Dict[str, str]] = None):
+    def record_custom_metric(
+        self,
+        name: str,
+        value: Union[int, float],
+        metric_type: MetricType = MetricType.GAUGE,
+        labels: Optional[Dict[str, str]] = None,
+    ):
         """
         Record a custom metric value.
 
@@ -364,9 +373,7 @@ class MCPMetricsCollector:
             return
 
         metric_value = MetricValue(
-            value=value,
-            metric_type=metric_type,
-            labels=labels or {}
+            value=value, metric_type=metric_type, labels=labels or {}
         )
 
         with self.lock:
@@ -401,8 +408,16 @@ class MCPMetricsCollector:
             # Calculate latency statistics
             latencies = [r.duration_ms for r in self.request_history if r.end_time]
             avg_latency = statistics.mean(latencies) if latencies else 0.0
-            p95_latency = statistics.quantiles(latencies, n=20)[18] if len(latencies) >= 20 else 0.0
-            p99_latency = statistics.quantiles(latencies, n=100)[98] if len(latencies) >= 100 else 0.0
+            p95_latency = (
+                statistics.quantiles(latencies, n=20)[18]
+                if len(latencies) >= 20
+                else 0.0
+            )
+            p99_latency = (
+                statistics.quantiles(latencies, n=100)[98]
+                if len(latencies) >= 100
+                else 0.0
+            )
 
             # Calculate token and cost totals
             total_tokens = sum(
@@ -417,8 +432,14 @@ class MCPMetricsCollector:
                     method_stats[method] = {
                         "total_requests": len(requests),
                         "successful_requests": sum(1 for r in requests if r.success),
-                        "avg_latency_ms": statistics.mean(method_latencies) if method_latencies else 0.0,
-                        "error_rate": (len(requests) - sum(1 for r in requests if r.success)) / len(requests) * 100
+                        "avg_latency_ms": statistics.mean(method_latencies)
+                        if method_latencies
+                        else 0.0,
+                        "error_rate": (
+                            len(requests) - sum(1 for r in requests if r.success)
+                        )
+                        / len(requests)
+                        * 100,
                     }
 
             return {
@@ -427,17 +448,17 @@ class MCPMetricsCollector:
                     "total": total_requests,
                     "successful": successful_requests,
                     "failed": failed_requests,
-                    "error_rate": (failed_requests / total_requests * 100) if total_requests > 0 else 0.0,
+                    "error_rate": (failed_requests / total_requests * 100)
+                    if total_requests > 0
+                    else 0.0,
                     "avg_latency_ms": avg_latency,
                     "p95_latency_ms": p95_latency,
-                    "p99_latency_ms": p99_latency
+                    "p99_latency_ms": p99_latency,
                 },
-                "tokens": {
-                    "total": total_tokens
-                },
+                "tokens": {"total": total_tokens},
                 "methods": method_stats,
                 "errors": dict(self.error_counts),
-                "custom_metrics": self._get_custom_metrics_summary()
+                "custom_metrics": self._get_custom_metrics_summary(),
             }
 
     def _empty_metrics(self) -> Dict[str, Any]:
@@ -451,12 +472,12 @@ class MCPMetricsCollector:
                 "error_rate": 0.0,
                 "avg_latency_ms": 0.0,
                 "p95_latency_ms": 0.0,
-                "p99_latency_ms": 0.0
+                "p99_latency_ms": 0.0,
             },
             "tokens": {"total": 0},
             "methods": {},
             "errors": {},
-            "custom_metrics": {}
+            "custom_metrics": {},
         }
 
     def _get_custom_metrics_summary(self) -> Dict[str, Any]:
@@ -470,7 +491,7 @@ class MCPMetricsCollector:
                     "avg": statistics.mean(recent_values),
                     "min": min(recent_values),
                     "max": max(recent_values),
-                    "count": len(values)
+                    "count": len(values),
                 }
         return summary
 
@@ -501,12 +522,18 @@ class MCPMetricsCollector:
                 "total_requests": len(requests),
                 "successful_requests": successful,
                 "failed_requests": len(requests) - successful,
-                "error_rate": ((len(requests) - successful) / len(requests) * 100) if requests else 0.0,
+                "error_rate": ((len(requests) - successful) / len(requests) * 100)
+                if requests
+                else 0.0,
                 "avg_latency_ms": statistics.mean(latencies) if latencies else 0.0,
                 "min_latency_ms": min(latencies) if latencies else 0.0,
                 "max_latency_ms": max(latencies) if latencies else 0.0,
                 "total_tokens": tokens,
-                "recent_errors": [r.error_type for r in requests[-10:] if not r.success and r.error_type]
+                "recent_errors": [
+                    r.error_type
+                    for r in requests[-10:]
+                    if not r.success and r.error_type
+                ],
             }
 
     def get_error_summary(self) -> Dict[str, Any]:
@@ -526,18 +553,22 @@ class MCPMetricsCollector:
             # Get recent errors from request history
             for request in list(self.request_history)[-50:]:  # Last 50 requests
                 if not request.success and request.error_type:
-                    recent_errors.append({
-                        "method": request.method,
-                        "error_type": request.error_type,
-                        "timestamp": request.start_time,
-                        "duration_ms": request.duration_ms
-                    })
+                    recent_errors.append(
+                        {
+                            "method": request.method,
+                            "error_type": request.error_type,
+                            "timestamp": request.start_time,
+                            "duration_ms": request.duration_ms,
+                        }
+                    )
 
             return {
                 "total_errors": total_errors,
                 "error_counts": dict(self.error_counts),
                 "recent_errors": recent_errors[-10:],  # Last 10 errors
-                "error_rate": (total_errors / len(self.request_history) * 100) if self.request_history else 0.0
+                "error_rate": (total_errors / len(self.request_history) * 100)
+                if self.request_history
+                else 0.0,
             }
 
     def export_metrics(self, format_type: Optional[str] = None) -> str:
@@ -573,39 +604,45 @@ class MCPMetricsCollector:
 
         # Request metrics
         req_metrics = metrics["requests"]
-        lines.extend([
-            f"# HELP mcp_requests_total Total number of MCP requests",
-            f"# TYPE mcp_requests_total counter",
-            f"mcp_requests_total {req_metrics['total']} {timestamp}",
-            f"# HELP mcp_requests_successful_total Total number of successful MCP requests",
-            f"# TYPE mcp_requests_successful_total counter",
-            f"mcp_requests_successful_total {req_metrics['successful']} {timestamp}",
-            f"# HELP mcp_requests_failed_total Total number of failed MCP requests",
-            f"# TYPE mcp_requests_failed_total counter",
-            f"mcp_requests_failed_total {req_metrics['failed']} {timestamp}",
-            f"# HELP mcp_request_duration_ms Request duration in milliseconds",
-            f"# TYPE mcp_request_duration_ms gauge",
-            f"mcp_request_duration_ms{{quantile=\"0.5\"}} {req_metrics['avg_latency_ms']} {timestamp}",
-            f"mcp_request_duration_ms{{quantile=\"0.95\"}} {req_metrics['p95_latency_ms']} {timestamp}",
-            f"mcp_request_duration_ms{{quantile=\"0.99\"}} {req_metrics['p99_latency_ms']} {timestamp}",
-        ])
+        lines.extend(
+            [
+                f"# HELP mcp_requests_total Total number of MCP requests",
+                f"# TYPE mcp_requests_total counter",
+                f"mcp_requests_total {req_metrics['total']} {timestamp}",
+                f"# HELP mcp_requests_successful_total Total number of successful MCP requests",
+                f"# TYPE mcp_requests_successful_total counter",
+                f"mcp_requests_successful_total {req_metrics['successful']} {timestamp}",
+                f"# HELP mcp_requests_failed_total Total number of failed MCP requests",
+                f"# TYPE mcp_requests_failed_total counter",
+                f"mcp_requests_failed_total {req_metrics['failed']} {timestamp}",
+                f"# HELP mcp_request_duration_ms Request duration in milliseconds",
+                f"# TYPE mcp_request_duration_ms gauge",
+                f"mcp_request_duration_ms{{quantile=\"0.5\"}} {req_metrics['avg_latency_ms']} {timestamp}",
+                f"mcp_request_duration_ms{{quantile=\"0.95\"}} {req_metrics['p95_latency_ms']} {timestamp}",
+                f"mcp_request_duration_ms{{quantile=\"0.99\"}} {req_metrics['p99_latency_ms']} {timestamp}",
+            ]
+        )
 
         # Token metrics
         token_metrics = metrics["tokens"]
-        lines.extend([
-            f"# HELP mcp_tokens_total Total number of tokens processed",
-            f"# TYPE mcp_tokens_total counter",
-            f"mcp_tokens_total {token_metrics['total']} {timestamp}",
-        ])
+        lines.extend(
+            [
+                f"# HELP mcp_tokens_total Total number of tokens processed",
+                f"# TYPE mcp_tokens_total counter",
+                f"mcp_tokens_total {token_metrics['total']} {timestamp}",
+            ]
+        )
 
         # Method-specific metrics
         for method, method_data in metrics["methods"].items():
             safe_method = method.replace("/", "_").replace("-", "_")
-            lines.extend([
-                f"mcp_method_requests_total{{method=\"{method}\"}} {method_data['total_requests']} {timestamp}",
-                f"mcp_method_duration_ms{{method=\"{method}\"}} {method_data['avg_latency_ms']} {timestamp}",
-                f"mcp_method_error_rate{{method=\"{method}\"}} {method_data['error_rate']} {timestamp}",
-            ])
+            lines.extend(
+                [
+                    f"mcp_method_requests_total{{method=\"{method}\"}} {method_data['total_requests']} {timestamp}",
+                    f"mcp_method_duration_ms{{method=\"{method}\"}} {method_data['avg_latency_ms']} {timestamp}",
+                    f"mcp_method_error_rate{{method=\"{method}\"}} {method_data['error_rate']} {timestamp}",
+                ]
+            )
 
         return "\n".join(lines)
 
@@ -715,11 +752,13 @@ class MCPMetricsCollector:
             "timestamp": metrics["timestamp"],
             "total_requests": req_metrics["total"],
             "error_rate": req_metrics["error_rate"],
-            "avg_latency_ms": req_metrics["avg_latency_ms"]
+            "avg_latency_ms": req_metrics["avg_latency_ms"],
         }
 
 
-def create_metrics_collector_from_config(config: Dict[str, Any]) -> Optional[MCPMetricsCollector]:
+def create_metrics_collector_from_config(
+    config: Dict[str, Any]
+) -> Optional[MCPMetricsCollector]:
     """
     Create a metrics collector from configuration dictionary.
 
@@ -737,8 +776,9 @@ def create_metrics_collector_from_config(config: Dict[str, Any]) -> Optional[MCP
     return MCPMetricsCollector(metrics_config)
 
 
-def setup_default_export_callbacks(metrics_collector: MCPMetricsCollector,
-                                  config: Dict[str, Any]) -> None:
+def setup_default_export_callbacks(
+    metrics_collector: MCPMetricsCollector, config: Dict[str, Any]
+) -> None:
     """
     Setup default export callbacks based on configuration.
 
@@ -751,9 +791,10 @@ def setup_default_export_callbacks(metrics_collector: MCPMetricsCollector,
     # File export callback
     export_file = metrics_config.get("export_file")
     if export_file:
+
         def file_export_callback(metrics: Dict[str, Any]):
             try:
-                with open(export_file, 'w') as f:
+                with open(export_file, "w") as f:
                     json.dump(metrics, f, indent=2)
             except Exception as e:
                 logger.error(f"Failed to export metrics to file {export_file}: {e}")
@@ -762,9 +803,12 @@ def setup_default_export_callbacks(metrics_collector: MCPMetricsCollector,
 
     # Console export callback
     if metrics_config.get("export_to_console", False):
+
         def console_export_callback(metrics: Dict[str, Any]):
             print(f"\n=== MCP Metrics Report ===")
-            print(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(metrics['timestamp']))}")
+            print(
+                f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(metrics['timestamp']))}"
+            )
             req_metrics = metrics["requests"]
             print(f"Total Requests: {req_metrics['total']}")
             print(f"Success Rate: {100 - req_metrics['error_rate']:.1f}%")
@@ -811,11 +855,15 @@ class MetricsIntegrationMixin:
                 "connection_duration_ms",
                 duration_ms,
                 MetricType.TIMER,
-                {"success": str(success)}
+                {"success": str(success)},
             )
 
-    def record_transport_metric(self, metric_name: str, value: Union[int, float],
-                              labels: Optional[Dict[str, str]] = None):
+    def record_transport_metric(
+        self,
+        metric_name: str,
+        value: Union[int, float],
+        labels: Optional[Dict[str, str]] = None,
+    ):
         """
         Record transport-specific metrics.
 
@@ -826,14 +874,13 @@ class MetricsIntegrationMixin:
         """
         if self.metrics_collector:
             self.metrics_collector.record_custom_metric(
-                f"transport_{metric_name}",
-                value,
-                MetricType.GAUGE,
-                labels
+                f"transport_{metric_name}", value, MetricType.GAUGE, labels
             )
 
 
-def integrate_metrics_with_circuit_breaker(circuit_breaker, metrics_collector: MCPMetricsCollector):
+def integrate_metrics_with_circuit_breaker(
+    circuit_breaker, metrics_collector: MCPMetricsCollector
+):
     """
     Integrate circuit breaker metrics with the metrics collector.
 
@@ -855,26 +902,26 @@ def integrate_metrics_with_circuit_breaker(circuit_breaker, metrics_collector: M
             metrics_collector.record_custom_metric(
                 "circuit_breaker_state",
                 state_values.get(cb_state.value, -1),
-                MetricType.GAUGE
+                MetricType.GAUGE,
             )
 
             # Record circuit breaker metrics
             metrics_collector.record_custom_metric(
                 "circuit_breaker_total_requests",
                 cb_metrics.total_requests,
-                MetricType.COUNTER
+                MetricType.COUNTER,
             )
 
             metrics_collector.record_custom_metric(
                 "circuit_breaker_failed_requests",
                 cb_metrics.failed_requests,
-                MetricType.COUNTER
+                MetricType.COUNTER,
             )
 
             metrics_collector.record_custom_metric(
                 "circuit_breaker_open_count",
                 cb_metrics.circuit_open_count,
-                MetricType.COUNTER
+                MetricType.COUNTER,
             )
 
         except Exception as e:
@@ -906,6 +953,7 @@ def track_request_globally(method: str):
     Args:
         method: The MCP method being tracked
     """
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             collector = get_global_metrics_collector()
@@ -922,5 +970,7 @@ def track_request_globally(method: str):
                         raise
             else:
                 return func(*args, **kwargs)
+
         return wrapper
+
     return decorator

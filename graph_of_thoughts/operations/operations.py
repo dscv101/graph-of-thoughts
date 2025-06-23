@@ -7,17 +7,18 @@
 # main author: Nils Blach
 
 from __future__ import annotations
-import asyncio
-import logging
-from enum import Enum
-from typing import List, Iterator, Dict, Callable, Union, Optional
-from abc import ABC, abstractmethod
-import itertools
 
-from graph_of_thoughts.operations.thought import Thought
+import asyncio
+import itertools
+import logging
+from abc import ABC, abstractmethod
+from enum import Enum
+from typing import Callable, Dict, Iterator, List, Optional, Union
+
 from graph_of_thoughts.language_models import AbstractLanguageModel
-from graph_of_thoughts.prompter import Prompter
+from graph_of_thoughts.operations.thought import Thought
 from graph_of_thoughts.parser import Parser
+from graph_of_thoughts.prompter import Prompter
 
 
 class OperationType(Enum):
@@ -923,7 +924,7 @@ class BatchGenerate(Operation):
         num_branches_response: int = 1,
         max_concurrent: Optional[int] = None,
         batch_size: Optional[int] = None,
-        enable_batch_processing: bool = True
+        enable_batch_processing: bool = True,
     ) -> None:
         """
         Initializes a new BatchGenerate operation.
@@ -980,9 +981,11 @@ class BatchGenerate(Operation):
             previous_thoughts = [Thought(state=kwargs)]
 
         # Check if the language model supports batch processing
-        if (self.enable_batch_processing and
-            hasattr(lm, 'query_batch') and
-            len(previous_thoughts) > 1):
+        if (
+            self.enable_batch_processing
+            and hasattr(lm, "query_batch")
+            and len(previous_thoughts) > 1
+        ):
             self._execute_batch(lm, prompter, parser, previous_thoughts)
         else:
             self._execute_sequential(lm, prompter, parser, previous_thoughts)
@@ -999,7 +1002,9 @@ class BatchGenerate(Operation):
                 self.id,
             )
         self.logger.info(
-            "BatchGenerate operation %d created %d new thoughts", self.id, len(self.thoughts)
+            "BatchGenerate operation %d created %d new thoughts",
+            self.id,
+            len(self.thoughts),
         )
 
     def _execute_batch(
@@ -1007,7 +1012,7 @@ class BatchGenerate(Operation):
         lm: AbstractLanguageModel,
         prompter: Prompter,
         parser: Parser,
-        previous_thoughts: List[Thought]
+        previous_thoughts: List[Thought],
     ) -> None:
         """
         Execute generation using batch processing for improved performance.
@@ -1021,7 +1026,9 @@ class BatchGenerate(Operation):
         :param previous_thoughts: List of thoughts to process.
         :type previous_thoughts: List[Thought]
         """
-        self.logger.info(f"Using batch processing for {len(previous_thoughts)} thoughts")
+        self.logger.info(
+            f"Using batch processing for {len(previous_thoughts)} thoughts"
+        )
 
         # Prepare all prompts for batch processing
         prompts = []
@@ -1030,7 +1037,9 @@ class BatchGenerate(Operation):
         for thought_idx, thought in enumerate(previous_thoughts):
             base_state = thought.state
             for _ in range(self.num_branches_response):
-                prompt = prompter.generate_prompt(self.num_branches_prompt, **base_state)
+                prompt = prompter.generate_prompt(
+                    self.num_branches_prompt, **base_state
+                )
                 prompts.append(prompt)
                 thought_prompt_mapping.append((thought_idx, thought, base_state))
 
@@ -1049,7 +1058,9 @@ class BatchGenerate(Operation):
                 self.logger.debug(f"Response {i}: {response_texts}")
 
                 # Parse the response
-                for new_state in parser.parse_generate_answer(base_state, response_texts):
+                for new_state in parser.parse_generate_answer(
+                    base_state, response_texts
+                ):
                     new_state = {**base_state, **new_state}
                     self.thoughts.append(Thought(new_state))
                     self.logger.debug(
@@ -1060,10 +1071,16 @@ class BatchGenerate(Operation):
             except Exception as e:
                 self.logger.error(f"Error processing response {i}: {e}")
                 # Create a fallback thought with error information
-                error_state = {**base_state, "error": str(e), "batch_processing_failed": True}
+                error_state = {
+                    **base_state,
+                    "error": str(e),
+                    "batch_processing_failed": True,
+                }
                 self.thoughts.append(Thought(error_state))
 
-    def _run_async_batch_safely(self, lm: AbstractLanguageModel, prompts: List[str]) -> List[Dict]:
+    def _run_async_batch_safely(
+        self, lm: AbstractLanguageModel, prompts: List[str]
+    ) -> List[Dict]:
         """
         Safely run batch processing with optimized event loop management.
 
@@ -1075,6 +1092,7 @@ class BatchGenerate(Operation):
         :rtype: List[Dict]
         :raises RuntimeError: If called from within an async context
         """
+
         async def _run_batch():
             return await self._run_batch_async(lm, prompts)
 
@@ -1094,7 +1112,9 @@ class BatchGenerate(Operation):
                 # Re-raise the error about being in async context
                 raise
 
-    async def _run_batch_async(self, lm: AbstractLanguageModel, prompts: List[str]) -> List[Dict]:
+    async def _run_batch_async(
+        self, lm: AbstractLanguageModel, prompts: List[str]
+    ) -> List[Dict]:
         """
         Run batch processing asynchronously.
 
@@ -1107,9 +1127,7 @@ class BatchGenerate(Operation):
         """
         async with lm:  # Use async context manager
             return await lm.query_batch(
-                prompts,
-                max_concurrent=self.max_concurrent,
-                batch_size=self.batch_size
+                prompts, max_concurrent=self.max_concurrent, batch_size=self.batch_size
             )
 
     def _execute_sequential(
@@ -1117,7 +1135,7 @@ class BatchGenerate(Operation):
         lm: AbstractLanguageModel,
         prompter: Prompter,
         parser: Parser,
-        previous_thoughts: List[Thought]
+        previous_thoughts: List[Thought],
     ) -> None:
         """
         Execute generation using sequential processing (fallback method).
@@ -1131,7 +1149,9 @@ class BatchGenerate(Operation):
         :param previous_thoughts: List of thoughts to process.
         :type previous_thoughts: List[Thought]
         """
-        self.logger.info(f"Using sequential processing for {len(previous_thoughts)} thoughts")
+        self.logger.info(
+            f"Using sequential processing for {len(previous_thoughts)} thoughts"
+        )
 
         for thought in previous_thoughts:
             base_state = thought.state
@@ -1173,7 +1193,7 @@ class BatchScore(Operation):
         ] = None,
         max_concurrent: Optional[int] = None,
         batch_size: Optional[int] = None,
-        enable_batch_processing: bool = True
+        enable_batch_processing: bool = True,
     ) -> None:
         """
         Initializes a new BatchScore operation.
@@ -1237,13 +1257,17 @@ class BatchScore(Operation):
             self._execute_combined_scoring(lm, prompter, parser, previous_thoughts)
         else:
             # Check if the language model supports batch processing
-            if (self.enable_batch_processing and
-                hasattr(lm, 'query_batch') and
-                len(previous_thoughts) > 1 and
-                self.scoring_function is None):  # Only use batch for LM scoring
+            if (
+                self.enable_batch_processing
+                and hasattr(lm, "query_batch")
+                and len(previous_thoughts) > 1
+                and self.scoring_function is None
+            ):  # Only use batch for LM scoring
                 self._execute_batch_scoring(lm, prompter, parser, previous_thoughts)
             else:
-                self._execute_sequential_scoring(lm, prompter, parser, previous_thoughts)
+                self._execute_sequential_scoring(
+                    lm, prompter, parser, previous_thoughts
+                )
 
         self.logger.info(
             "BatchScore operation %d scored %d thoughts",
@@ -1256,7 +1280,7 @@ class BatchScore(Operation):
         lm: AbstractLanguageModel,
         prompter: Prompter,
         parser: Parser,
-        previous_thoughts: List[Thought]
+        previous_thoughts: List[Thought],
     ) -> None:
         """
         Execute combined scoring for all thoughts together.
@@ -1296,7 +1320,7 @@ class BatchScore(Operation):
         lm: AbstractLanguageModel,
         prompter: Prompter,
         parser: Parser,
-        previous_thoughts: List[Thought]
+        previous_thoughts: List[Thought],
     ) -> None:
         """
         Execute scoring using batch processing for improved performance.
@@ -1322,7 +1346,9 @@ class BatchScore(Operation):
                 prompts.append(prompt)
                 thought_mapping.append(thought)
 
-        self.logger.debug(f"Prepared {len(prompts)} scoring prompts for batch processing")
+        self.logger.debug(
+            f"Prepared {len(prompts)} scoring prompts for batch processing"
+        )
 
         # Use optimized async execution for batch processing
         responses = self._run_async_batch_safely(lm, prompts)
@@ -1330,7 +1356,7 @@ class BatchScore(Operation):
         # Process responses and assign scores
         for i in range(0, len(responses), self.num_samples):
             thought = thought_mapping[i]
-            thought_responses = responses[i:i + self.num_samples]
+            thought_responses = responses[i : i + self.num_samples]
 
             try:
                 # Extract text from responses
@@ -1338,7 +1364,9 @@ class BatchScore(Operation):
                 for response in thought_responses:
                     response_texts.extend(lm.get_response_texts([response]))
 
-                self.logger.debug(f"Scoring responses for thought {thought.id}: {response_texts}")
+                self.logger.debug(
+                    f"Scoring responses for thought {thought.id}: {response_texts}"
+                )
 
                 # Parse the score
                 score = parser.parse_score_answer([thought.state], response_texts)[0]
@@ -1348,13 +1376,17 @@ class BatchScore(Operation):
                 self.thoughts.append(new_thought)
 
             except Exception as e:
-                self.logger.error(f"Error processing score for thought {thought.id}: {e}")
+                self.logger.error(
+                    f"Error processing score for thought {thought.id}: {e}"
+                )
                 # Create a fallback thought with default score
                 new_thought = Thought.from_thought(thought)
                 new_thought.score = 0.0  # Default score for failed scoring
                 self.thoughts.append(new_thought)
 
-    def _run_async_batch_safely(self, lm: AbstractLanguageModel, prompts: List[str]) -> List[Dict]:
+    def _run_async_batch_safely(
+        self, lm: AbstractLanguageModel, prompts: List[str]
+    ) -> List[Dict]:
         """
         Safely run batch processing with optimized event loop management.
 
@@ -1366,6 +1398,7 @@ class BatchScore(Operation):
         :rtype: List[Dict]
         :raises RuntimeError: If called from within an async context
         """
+
         async def _run_batch():
             return await self._run_batch_async(lm, prompts)
 
@@ -1385,7 +1418,9 @@ class BatchScore(Operation):
                 # Re-raise the error about being in async context
                 raise
 
-    async def _run_batch_async(self, lm: AbstractLanguageModel, prompts: List[str]) -> List[Dict]:
+    async def _run_batch_async(
+        self, lm: AbstractLanguageModel, prompts: List[str]
+    ) -> List[Dict]:
         """
         Run batch processing asynchronously for scoring.
 
@@ -1398,9 +1433,7 @@ class BatchScore(Operation):
         """
         async with lm:  # Use async context manager
             return await lm.query_batch(
-                prompts,
-                max_concurrent=self.max_concurrent,
-                batch_size=self.batch_size
+                prompts, max_concurrent=self.max_concurrent, batch_size=self.batch_size
             )
 
     def _execute_sequential_scoring(
@@ -1408,7 +1441,7 @@ class BatchScore(Operation):
         lm: AbstractLanguageModel,
         prompter: Prompter,
         parser: Parser,
-        previous_thoughts: List[Thought]
+        previous_thoughts: List[Thought],
     ) -> None:
         """
         Execute scoring using sequential processing (fallback method).
@@ -1422,7 +1455,9 @@ class BatchScore(Operation):
         :param previous_thoughts: List of thoughts to score.
         :type previous_thoughts: List[Thought]
         """
-        self.logger.info(f"Using sequential scoring for {len(previous_thoughts)} thoughts")
+        self.logger.info(
+            f"Using sequential scoring for {len(previous_thoughts)} thoughts"
+        )
 
         for thought in previous_thoughts:
             new_thought = Thought.from_thought(thought)
@@ -1464,7 +1499,7 @@ class BatchAggregate(Operation):
         num_responses: int = 1,
         max_concurrent: Optional[int] = None,
         batch_size: Optional[int] = None,
-        enable_batch_processing: bool = True
+        enable_batch_processing: bool = True,
     ) -> None:
         """
         Initializes a new BatchAggregate operation.
@@ -1526,12 +1561,18 @@ class BatchAggregate(Operation):
         previous_thought_states = [thought.state for thought in previous_thoughts]
 
         # Check if the language model supports batch processing and we have multiple responses
-        if (self.enable_batch_processing and
-            hasattr(lm, 'query_batch') and
-            self.num_responses > 1):
-            self._execute_batch_aggregation(lm, prompter, parser, previous_thought_states, base_state)
+        if (
+            self.enable_batch_processing
+            and hasattr(lm, "query_batch")
+            and self.num_responses > 1
+        ):
+            self._execute_batch_aggregation(
+                lm, prompter, parser, previous_thought_states, base_state
+            )
         else:
-            self._execute_sequential_aggregation(lm, prompter, parser, previous_thought_states, base_state)
+            self._execute_sequential_aggregation(
+                lm, prompter, parser, previous_thought_states, base_state
+            )
 
         self.logger.info(
             "BatchAggregate operation %d created %d aggregated thoughts",
@@ -1545,7 +1586,7 @@ class BatchAggregate(Operation):
         prompter: Prompter,
         parser: Parser,
         previous_thought_states: List[Dict],
-        base_state: Dict
+        base_state: Dict,
     ) -> None:
         """
         Execute aggregation using batch processing for improved performance.
@@ -1567,7 +1608,9 @@ class BatchAggregate(Operation):
         prompt = prompter.aggregation_prompt(previous_thought_states)
         prompts = [prompt] * self.num_responses
 
-        self.logger.debug(f"Prepared {len(prompts)} aggregation prompts for batch processing")
+        self.logger.debug(
+            f"Prepared {len(prompts)} aggregation prompts for batch processing"
+        )
 
         # Use optimized async execution for batch processing
         responses = self._run_async_batch_safely(lm, prompts)
@@ -1578,13 +1621,17 @@ class BatchAggregate(Operation):
             try:
                 response_texts.extend(lm.get_response_texts([response]))
             except Exception as e:
-                self.logger.error(f"Error extracting text from aggregation response: {e}")
+                self.logger.error(
+                    f"Error extracting text from aggregation response: {e}"
+                )
                 response_texts.append(f"Error: {str(e)}")
 
         self.logger.debug("Aggregation responses from LM: %s", response_texts)
 
         try:
-            parsed = parser.parse_aggregation_answer(previous_thought_states, response_texts)
+            parsed = parser.parse_aggregation_answer(
+                previous_thought_states, response_texts
+            )
 
             if isinstance(parsed, dict):
                 parsed = [parsed]
@@ -1593,10 +1640,16 @@ class BatchAggregate(Operation):
         except Exception as e:
             self.logger.error(f"Error parsing aggregation responses: {e}")
             # Create a fallback aggregated thought
-            fallback_state = {**base_state, "aggregation_error": str(e), "batch_processing_failed": True}
+            fallback_state = {
+                **base_state,
+                "aggregation_error": str(e),
+                "batch_processing_failed": True,
+            }
             self.thoughts.append(Thought(fallback_state))
 
-    def _run_async_batch_safely(self, lm: AbstractLanguageModel, prompts: List[str]) -> List[Dict]:
+    def _run_async_batch_safely(
+        self, lm: AbstractLanguageModel, prompts: List[str]
+    ) -> List[Dict]:
         """
         Safely run batch processing with optimized event loop management.
 
@@ -1608,6 +1661,7 @@ class BatchAggregate(Operation):
         :rtype: List[Dict]
         :raises RuntimeError: If called from within an async context
         """
+
         async def _run_batch():
             return await self._run_batch_async(lm, prompts)
 
@@ -1627,7 +1681,9 @@ class BatchAggregate(Operation):
                 # Re-raise the error about being in async context
                 raise
 
-    async def _run_batch_async(self, lm: AbstractLanguageModel, prompts: List[str]) -> List[Dict]:
+    async def _run_batch_async(
+        self, lm: AbstractLanguageModel, prompts: List[str]
+    ) -> List[Dict]:
         """
         Run batch processing asynchronously for aggregation.
 
@@ -1640,9 +1696,7 @@ class BatchAggregate(Operation):
         """
         async with lm:  # Use async context manager
             return await lm.query_batch(
-                prompts,
-                max_concurrent=self.max_concurrent,
-                batch_size=self.batch_size
+                prompts, max_concurrent=self.max_concurrent, batch_size=self.batch_size
             )
 
     def _execute_sequential_aggregation(
@@ -1651,7 +1705,7 @@ class BatchAggregate(Operation):
         prompter: Prompter,
         parser: Parser,
         previous_thought_states: List[Dict],
-        base_state: Dict
+        base_state: Dict,
     ) -> None:
         """
         Execute aggregation using sequential processing (fallback method).
@@ -1667,7 +1721,9 @@ class BatchAggregate(Operation):
         :param base_state: Base state for new thoughts.
         :type base_state: Dict
         """
-        self.logger.info(f"Using sequential aggregation for {self.num_responses} responses")
+        self.logger.info(
+            f"Using sequential aggregation for {self.num_responses} responses"
+        )
 
         prompt = prompter.aggregation_prompt(previous_thought_states)
         self.logger.debug("Prompt for LM: %s", prompt)

@@ -7,9 +7,10 @@
 # main author: Nils Blach
 
 from __future__ import annotations
-import logging
-from typing import Iterator, Dict, Optional
+
 import itertools
+import logging
+from typing import Dict, Iterator, Optional
 
 
 class Thought:

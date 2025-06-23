@@ -13,50 +13,34 @@ Features demonstrated:
 - Configuration caching benefits
 """
 
-import time
 import json
-import tempfile
-import sys
 import os
-from typing import List, Dict, Any
+import sys
+import tempfile
+import time
+from typing import Any, Dict, List
 
 # Add the project root to the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import the MCP language model
 from graph_of_thoughts.language_models import MCPLanguageModel
-from graph_of_thoughts.language_models.caching import get_global_cache_stats, clear_global_cache
+from graph_of_thoughts.language_models.caching import (
+    clear_global_cache,
+    get_global_cache_stats,
+)
 
 
 def create_demo_config() -> str:
     """Create a demo configuration file for testing."""
     config = {
         "mcp_demo": {
-            "transport": {
-                "type": "stdio",
-                "command": "echo",
-                "args": [],
-                "env": {}
-            },
-            "client_info": {
-                "name": "caching-demo",
-                "version": "1.0.0"
-            },
-            "capabilities": {
-                "sampling": {}
-            },
-            "default_sampling_params": {
-                "temperature": 0.7,
-                "maxTokens": 1000
-            },
-            "connection_config": {
-                "timeout": 10.0,
-                "retry_attempts": 1
-            },
-            "cost_tracking": {
-                "prompt_token_cost": 0.001,
-                "response_token_cost": 0.002
-            },
+            "transport": {"type": "stdio", "command": "echo", "args": [], "env": {}},
+            "client_info": {"name": "caching-demo", "version": "1.0.0"},
+            "capabilities": {"sampling": {}},
+            "default_sampling_params": {"temperature": 0.7, "maxTokens": 1000},
+            "connection_config": {"timeout": 10.0, "retry_attempts": 1},
+            "cost_tracking": {"prompt_token_cost": 0.001, "response_token_cost": 0.002},
             "caching": {
                 "max_size": 100,
                 "default_ttl": 300.0,
@@ -65,13 +49,13 @@ def create_demo_config() -> str:
                 "metadata_cache_size": 25,
                 "response_ttl": 180.0,
                 "config_ttl": 600.0,
-                "metadata_ttl": 300.0
-            }
+                "metadata_ttl": 300.0,
+            },
         }
     }
-    
+
     # Save to temporary file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(config, f, indent=2)
         return f.name
 
@@ -81,12 +65,12 @@ def demo_response_caching():
     print("=== Response Caching Demo ===")
 
     # Test the caching system directly without MCP connections
-    from graph_of_thoughts.language_models.caching import MultiLevelCacheManager, CacheConfig
-
-    config = CacheConfig(
-        response_cache_size=10,
-        response_ttl=300.0
+    from graph_of_thoughts.language_models.caching import (
+        CacheConfig,
+        MultiLevelCacheManager,
     )
+
+    config = CacheConfig(response_cache_size=10, response_ttl=300.0)
     cache_manager = MultiLevelCacheManager(config)
 
     # Simulate queries
@@ -121,7 +105,7 @@ def demo_response_caching():
     # Show cache statistics
     stats = cache_manager.get_all_stats()
     if stats:
-        response_stats = stats.get('response_cache', {})
+        response_stats = stats.get("response_cache", {})
         print(f"\nCache Statistics:")
         print(f"  Hits: {response_stats.get('hits', 0)}")
         print(f"  Misses: {response_stats.get('misses', 0)}")
@@ -135,7 +119,10 @@ def demo_parameter_awareness():
     """Demonstrate parameter-aware caching."""
     print("=== Parameter-Aware Caching Demo ===")
 
-    from graph_of_thoughts.language_models.caching import MultiLevelCacheManager, CacheConfig
+    from graph_of_thoughts.language_models.caching import (
+        CacheConfig,
+        MultiLevelCacheManager,
+    )
 
     config = CacheConfig(response_cache_size=10)
     cache_manager = MultiLevelCacheManager(config)
@@ -149,9 +136,17 @@ def demo_parameter_awareness():
     test_cases = [
         (base_query, {"num_responses": 1}, "Single response"),
         (base_query, {"num_responses": 3}, "Multiple responses"),
-        (base_query, {"num_responses": 1}, "Single response again"),  # Should be cache hit
+        (
+            base_query,
+            {"num_responses": 1},
+            "Single response again",
+        ),  # Should be cache hit
         (base_query, {"temperature": 0.7}, "Different temperature"),
-        (base_query, {"num_responses": 1}, "Single response repeat"),  # Should be cache hit
+        (
+            base_query,
+            {"num_responses": 1},
+            "Single response repeat",
+        ),  # Should be cache hit
     ]
 
     for query, params, description in test_cases:
@@ -173,7 +168,7 @@ def demo_parameter_awareness():
     # Show updated statistics
     stats = cache_manager.get_all_stats()
     if stats:
-        response_stats = stats.get('response_cache', {})
+        response_stats = stats.get("response_cache", {})
         print(f"\nUpdated Cache Statistics:")
         print(f"  Hit Rate: {response_stats.get('hit_rate', 0):.1%}")
         print(f"  Total Entries: {response_stats.get('size', 0)}")
@@ -185,7 +180,10 @@ def demo_configuration_caching():
     """Demonstrate configuration caching benefits."""
     print("=== Configuration Caching Demo ===")
 
-    from graph_of_thoughts.language_models.caching import MultiLevelCacheManager, CacheConfig
+    from graph_of_thoughts.language_models.caching import (
+        CacheConfig,
+        MultiLevelCacheManager,
+    )
 
     config = CacheConfig(config_cache_size=10)
     cache_manager = MultiLevelCacheManager(config)
@@ -220,7 +218,7 @@ def demo_configuration_caching():
     # Show configuration cache statistics
     stats = cache_manager.get_all_stats()
     if stats:
-        config_stats = stats.get('config_cache', {})
+        config_stats = stats.get("config_cache", {})
         print(f"\nConfiguration Cache Statistics:")
         print(f"  Hits: {config_stats.get('hits', 0)}")
         print(f"  Misses: {config_stats.get('misses', 0)}")
@@ -233,7 +231,10 @@ def demo_cache_monitoring():
     """Demonstrate cache monitoring and statistics."""
     print("=== Cache Monitoring Demo ===")
 
-    from graph_of_thoughts.language_models.caching import MultiLevelCacheManager, CacheConfig
+    from graph_of_thoughts.language_models.caching import (
+        CacheConfig,
+        MultiLevelCacheManager,
+    )
 
     config = CacheConfig(response_cache_size=10)
     cache_manager = MultiLevelCacheManager(config)
@@ -244,7 +245,7 @@ def demo_cache_monitoring():
         "What is Java?",
         "What is Python?",  # Cache hit
         "What is C++?",
-        "What is Java?",    # Cache hit
+        "What is Java?",  # Cache hit
     ]
 
     print("Performing operations and monitoring cache...")
@@ -265,10 +266,12 @@ def demo_cache_monitoring():
         # Get current statistics
         stats = cache_manager.get_all_stats()
         if stats:
-            response_stats = stats.get('response_cache', {})
-            hit_rate = response_stats.get('hit_rate', 0)
-            size = response_stats.get('size', 0)
-            print(f"Operation {i}: {status} - Hit rate {hit_rate:.1%}, Cache size {size}")
+            response_stats = stats.get("response_cache", {})
+            hit_rate = response_stats.get("hit_rate", 0)
+            size = response_stats.get("size", 0)
+            print(
+                f"Operation {i}: {status} - Hit rate {hit_rate:.1%}, Cache size {size}"
+            )
 
     # Final statistics summary
     print("\nFinal Cache Summary:")
@@ -279,7 +282,9 @@ def demo_cache_monitoring():
             print(f"    Hits: {cache_stats.get('hits', 0)}")
             print(f"    Misses: {cache_stats.get('misses', 0)}")
             print(f"    Hit Rate: {cache_stats.get('hit_rate', 0):.1%}")
-            print(f"    Size: {cache_stats.get('size', 0)}/{cache_stats.get('max_size', 0)}")
+            print(
+                f"    Size: {cache_stats.get('size', 0)}/{cache_stats.get('max_size', 0)}"
+            )
 
     print()
 
@@ -288,7 +293,10 @@ def demo_cache_management():
     """Demonstrate cache management operations."""
     print("=== Cache Management Demo ===")
 
-    from graph_of_thoughts.language_models.caching import MultiLevelCacheManager, CacheConfig
+    from graph_of_thoughts.language_models.caching import (
+        CacheConfig,
+        MultiLevelCacheManager,
+    )
 
     config = CacheConfig(response_cache_size=10)
     cache_manager = MultiLevelCacheManager(config)
@@ -301,7 +309,7 @@ def demo_cache_management():
     # Show cache state before clearing
     stats_before = cache_manager.get_all_stats()
     if stats_before:
-        response_stats = stats_before.get('response_cache', {})
+        response_stats = stats_before.get("response_cache", {})
         print(f"Before clearing - Cache size: {response_stats.get('size', 0)}")
 
     # Clear cache
@@ -311,7 +319,7 @@ def demo_cache_management():
     # Show cache state after clearing
     stats_after = cache_manager.get_all_stats()
     if stats_after:
-        response_stats = stats_after.get('response_cache', {})
+        response_stats = stats_after.get("response_cache", {})
         print(f"After clearing - Cache size: {response_stats.get('size', 0)}")
 
     # Test global cache operations
@@ -330,7 +338,7 @@ def main():
     print("🚀 Intelligent Caching System Demo")
     print("=" * 50)
     print()
-    
+
     demos = [
         demo_response_caching,
         demo_parameter_awareness,
@@ -338,14 +346,14 @@ def main():
         demo_cache_monitoring,
         demo_cache_management,
     ]
-    
+
     for demo in demos:
         try:
             demo()
         except Exception as e:
             print(f"Demo {demo.__name__} failed: {e}")
             print()
-    
+
     print("✅ Caching demo completed!")
     print("\nKey Benefits Demonstrated:")
     print("• Response caching reduces latency for repeated queries")

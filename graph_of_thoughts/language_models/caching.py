@@ -33,15 +33,15 @@ import threading
 import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, Union
 from enum import Enum
-
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 logger = logging.getLogger(__name__)
 
 
 class CachePolicy(Enum):
     """Cache eviction policies."""
+
     LRU = "lru"  # Least Recently Used
     LFU = "lfu"  # Least Frequently Used
     FIFO = "fifo"  # First In, First Out
@@ -51,18 +51,19 @@ class CachePolicy(Enum):
 @dataclass
 class CacheEntry:
     """Represents a single cache entry with metadata."""
+
     value: Any
     created_at: float
     last_accessed: float
     access_count: int = 0
     ttl: Optional[float] = None
-    
+
     def is_expired(self) -> bool:
         """Check if the cache entry has expired."""
         if self.ttl is None:
             return False
         return time.time() - self.created_at > self.ttl
-    
+
     def touch(self) -> None:
         """Update access metadata."""
         self.last_accessed = time.time()
@@ -72,17 +73,18 @@ class CacheEntry:
 @dataclass
 class CacheConfig:
     """Configuration for cache behavior."""
+
     max_size: int = 1000
     default_ttl: Optional[float] = 3600.0  # 1 hour default
     policy: CachePolicy = CachePolicy.LRU
     enable_statistics: bool = True
     cleanup_interval: float = 300.0  # 5 minutes
-    
+
     # Specific cache configurations
     response_cache_size: int = 500
     config_cache_size: int = 50
     metadata_cache_size: int = 200
-    
+
     # TTL configurations
     response_ttl: float = 1800.0  # 30 minutes
     config_ttl: float = 7200.0  # 2 hours
@@ -92,19 +94,20 @@ class CacheConfig:
 @dataclass
 class CacheStats:
     """Cache statistics for monitoring and debugging."""
+
     hits: int = 0
     misses: int = 0
     evictions: int = 0
     expirations: int = 0
     size: int = 0
     max_size: int = 0
-    
+
     @property
     def hit_rate(self) -> float:
         """Calculate cache hit rate."""
         total = self.hits + self.misses
         return self.hits / total if total > 0 else 0.0
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert stats to dictionary."""
         return {
@@ -114,14 +117,14 @@ class CacheStats:
             "expirations": self.expirations,
             "size": self.size,
             "max_size": self.max_size,
-            "hit_rate": self.hit_rate
+            "hit_rate": self.hit_rate,
         }
 
 
 class IntelligentCache:
     """
     Intelligent caching system with TTL, LRU eviction, and statistics.
-    
+
     This cache provides sophisticated caching capabilities including:
     - Automatic expiration based on TTL
     - LRU eviction when cache is full
@@ -129,11 +132,11 @@ class IntelligentCache:
     - Detailed statistics tracking
     - Configurable policies and limits
     """
-    
+
     def __init__(self, config: CacheConfig):
         """
         Initialize the intelligent cache.
-        
+
         :param config: Cache configuration
         :type config: CacheConfig
         """
@@ -142,32 +145,31 @@ class IntelligentCache:
         self._lock = threading.RLock()
         self._stats = CacheStats(max_size=config.max_size)
         self._last_cleanup = time.time()
-        
-        logger.debug(f"Initialized cache with max_size={config.max_size}, policy={config.policy.value}")
-    
+
+        logger.debug(
+            f"Initialized cache with max_size={config.max_size}, policy={config.policy.value}"
+        )
+
     def _generate_key(self, *args, **kwargs) -> str:
         """
         Generate a cache key from arguments and keyword arguments.
-        
+
         :param args: Positional arguments
         :param kwargs: Keyword arguments
         :return: Cache key
         :rtype: str
         """
         # Create a deterministic representation of the arguments
-        key_data = {
-            "args": args,
-            "kwargs": sorted(kwargs.items()) if kwargs else {}
-        }
-        
+        key_data = {"args": args, "kwargs": sorted(kwargs.items()) if kwargs else {}}
+
         # Convert to JSON and hash for consistent key generation
         key_json = json.dumps(key_data, sort_keys=True, default=str)
         return hashlib.sha256(key_json.encode()).hexdigest()[:16]  # Use first 16 chars
-    
+
     def get(self, key: str) -> Optional[Any]:
         """
         Get a value from the cache.
-        
+
         :param key: Cache key
         :type key: str
         :return: Cached value or None if not found/expired
@@ -175,13 +177,13 @@ class IntelligentCache:
         """
         with self._lock:
             self._maybe_cleanup()
-            
+
             if key not in self._cache:
                 self._stats.misses += 1
                 return None
-            
+
             entry = self._cache[key]
-            
+
             # Check if expired
             if entry.is_expired():
                 del self._cache[key]
@@ -189,21 +191,21 @@ class IntelligentCache:
                 self._stats.misses += 1
                 self._stats.size = len(self._cache)
                 return None
-            
+
             # Update access metadata
             entry.touch()
-            
+
             # Move to end for LRU
             if self.config.policy == CachePolicy.LRU:
                 self._cache.move_to_end(key)
-            
+
             self._stats.hits += 1
             return entry.value
-    
+
     def put(self, key: str, value: Any, ttl: Optional[float] = None) -> None:
         """
         Put a value in the cache.
-        
+
         :param key: Cache key
         :type key: str
         :param value: Value to cache
@@ -213,38 +215,38 @@ class IntelligentCache:
         """
         with self._lock:
             current_time = time.time()
-            
+
             # Use provided TTL or default
             effective_ttl = ttl if ttl is not None else self.config.default_ttl
-            
+
             # Create cache entry
             entry = CacheEntry(
                 value=value,
                 created_at=current_time,
                 last_accessed=current_time,
-                ttl=effective_ttl
+                ttl=effective_ttl,
             )
-            
+
             # If key already exists, update it
             if key in self._cache:
                 self._cache[key] = entry
                 if self.config.policy == CachePolicy.LRU:
                     self._cache.move_to_end(key)
                 return
-            
+
             # Check if we need to evict
             if len(self._cache) >= self.config.max_size:
                 self._evict()
-            
+
             # Add new entry
             self._cache[key] = entry
             self._stats.size = len(self._cache)
-    
+
     def _evict(self) -> None:
         """Evict entries based on the configured policy."""
         if not self._cache:
             return
-        
+
         if self.config.policy == CachePolicy.LRU:
             # Remove least recently used (first item in OrderedDict)
             self._cache.popitem(last=False)
@@ -255,45 +257,42 @@ class IntelligentCache:
         elif self.config.policy == CachePolicy.FIFO:
             # Remove first in (first item in OrderedDict)
             self._cache.popitem(last=False)
-        
+
         self._stats.evictions += 1
         self._stats.size = len(self._cache)
-    
+
     def _maybe_cleanup(self) -> None:
         """Perform cleanup if enough time has passed."""
         current_time = time.time()
         if current_time - self._last_cleanup > self.config.cleanup_interval:
             self._cleanup_expired()
             self._last_cleanup = current_time
-    
+
     def _cleanup_expired(self) -> None:
         """Remove all expired entries."""
-        expired_keys = [
-            key for key, entry in self._cache.items()
-            if entry.is_expired()
-        ]
-        
+        expired_keys = [key for key, entry in self._cache.items() if entry.is_expired()]
+
         for key in expired_keys:
             del self._cache[key]
             self._stats.expirations += 1
-        
+
         self._stats.size = len(self._cache)
-        
+
         if expired_keys:
             logger.debug(f"Cleaned up {len(expired_keys)} expired cache entries")
-    
+
     def clear(self) -> None:
         """Clear all cache entries."""
         with self._lock:
             self._cache.clear()
             self._stats = CacheStats(max_size=self.config.max_size)
-    
+
     def get_stats(self) -> CacheStats:
         """Get current cache statistics."""
         with self._lock:
             self._stats.size = len(self._cache)
             return self._stats
-    
+
     def cache_key(self, *args, **kwargs) -> str:
         """
         Generate a cache key for the given arguments.
@@ -330,29 +329,31 @@ class MultiLevelCacheManager:
             max_size=config.response_cache_size,
             default_ttl=config.response_ttl,
             policy=config.policy,
-            enable_statistics=config.enable_statistics
+            enable_statistics=config.enable_statistics,
         )
 
         config_cache_config = CacheConfig(
             max_size=config.config_cache_size,
             default_ttl=config.config_ttl,
             policy=CachePolicy.LRU,  # Always use LRU for configs
-            enable_statistics=config.enable_statistics
+            enable_statistics=config.enable_statistics,
         )
 
         metadata_config = CacheConfig(
             max_size=config.metadata_cache_size,
             default_ttl=config.metadata_ttl,
             policy=config.policy,
-            enable_statistics=config.enable_statistics
+            enable_statistics=config.enable_statistics,
         )
 
         self.response_cache = IntelligentCache(response_config)
         self.config_cache = IntelligentCache(config_cache_config)
         self.metadata_cache = IntelligentCache(metadata_config)
 
-        logger.info(f"Initialized multi-level cache manager with {config.response_cache_size} response, "
-                   f"{config.config_cache_size} config, {config.metadata_cache_size} metadata entries")
+        logger.info(
+            f"Initialized multi-level cache manager with {config.response_cache_size} response, "
+            f"{config.config_cache_size} config, {config.metadata_cache_size} metadata entries"
+        )
 
     def get_response(self, query: str, **params) -> Optional[Any]:
         """
@@ -367,7 +368,9 @@ class MultiLevelCacheManager:
         key = self.response_cache.cache_key(query, **params)
         return self.response_cache.get(key)
 
-    def put_response(self, query: str, response: Any, ttl: Optional[float] = None, **params) -> None:
+    def put_response(
+        self, query: str, response: Any, ttl: Optional[float] = None, **params
+    ) -> None:
         """
         Cache a response for the given query and parameters.
 
@@ -396,7 +399,13 @@ class MultiLevelCacheManager:
         key = self.config_cache.cache_key(config_path, model_name)
         return self.config_cache.get(key)
 
-    def put_config(self, config_path: str, model_name: str, config: Dict, ttl: Optional[float] = None) -> None:
+    def put_config(
+        self,
+        config_path: str,
+        model_name: str,
+        config: Dict,
+        ttl: Optional[float] = None,
+    ) -> None:
         """
         Cache a configuration.
 
@@ -423,7 +432,9 @@ class MultiLevelCacheManager:
         """
         return self.metadata_cache.get(key)
 
-    def put_metadata(self, key: str, metadata: Any, ttl: Optional[float] = None) -> None:
+    def put_metadata(
+        self, key: str, metadata: Any, ttl: Optional[float] = None
+    ) -> None:
         """
         Cache metadata.
 
@@ -452,7 +463,7 @@ class MultiLevelCacheManager:
         return {
             "response_cache": self.response_cache.get_stats().to_dict(),
             "config_cache": self.config_cache.get_stats().to_dict(),
-            "metadata_cache": self.metadata_cache.get_stats().to_dict()
+            "metadata_cache": self.metadata_cache.get_stats().to_dict(),
         }
 
 

@@ -4,15 +4,16 @@ Test script for MCP integration with Graph of Thoughts.
 This script tests the MCP implementation with different hosts and configurations.
 """
 
-import os
-import sys
+import asyncio
 import json
 import logging
-import asyncio
-from typing import Dict, List, Any
+import os
+import sys
+from typing import Any, Dict, List
 
 # Add the project root to the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 
 # Test imports without dependencies that might not be installed
 def test_imports() -> bool:
@@ -52,22 +53,27 @@ class MCPIntegrationTester:
         """Set up logging for tests."""
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
 
     def test_config_loading(self) -> bool:
         """Test MCP configuration loading."""
         try:
             config_path = "graph_of_thoughts/language_models/mcp_config_template.json"
-            
+
             if not os.path.exists(config_path):
                 self.logger.error(f"Config template not found: {config_path}")
                 return False
 
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 config = json.load(f)
 
-            required_configs = ["mcp_claude_desktop", "mcp_vscode", "mcp_cursor", "mcp_http_server"]
+            required_configs = [
+                "mcp_claude_desktop",
+                "mcp_vscode",
+                "mcp_cursor",
+                "mcp_http_server",
+            ]
             for config_name in required_configs:
                 if config_name not in config:
                     self.logger.error(f"Missing configuration: {config_name}")
@@ -75,7 +81,12 @@ class MCPIntegrationTester:
 
                 cfg = config[config_name]
                 # Updated to match new MCP protocol-compliant configuration schema
-                required_fields = ["transport", "client_info", "capabilities", "default_sampling_params"]
+                required_fields = [
+                    "transport",
+                    "client_info",
+                    "capabilities",
+                    "default_sampling_params",
+                ]
                 for field in required_fields:
                     if field not in cfg:
                         self.logger.error(f"Missing field {field} in {config_name}")
@@ -84,13 +95,17 @@ class MCPIntegrationTester:
                 # Validate transport structure
                 transport = cfg.get("transport", {})
                 if "type" not in transport:
-                    self.logger.error(f"Missing 'type' in transport config for {config_name}")
+                    self.logger.error(
+                        f"Missing 'type' in transport config for {config_name}"
+                    )
                     return False
 
                 # Validate client_info structure
                 client_info = cfg.get("client_info", {})
                 if "name" not in client_info or "version" not in client_info:
-                    self.logger.error(f"Missing 'name' or 'version' in client_info for {config_name}")
+                    self.logger.error(
+                        f"Missing 'name' or 'version' in client_info for {config_name}"
+                    )
                     return False
 
             self.logger.info("✓ Configuration loading test passed")
@@ -104,7 +119,7 @@ class MCPIntegrationTester:
         """Test MCP transport creation."""
         try:
             config_path = "graph_of_thoughts/language_models/mcp_config_template.json"
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 config = json.load(f)
 
             # Test stdio transport
@@ -132,24 +147,22 @@ class MCPIntegrationTester:
         """Test MCP language model instantiation."""
         try:
             config_path = "graph_of_thoughts/language_models/mcp_config_template.json"
-            
+
             # Test each configuration
             configs_to_test = ["mcp_claude_desktop", "mcp_vscode", "mcp_cursor"]
-            
+
             for config_name in configs_to_test:
                 try:
                     lm = language_models.MCPLanguageModel(
-                        config_path=config_path,
-                        model_name=config_name,
-                        cache=True
+                        config_path=config_path, model_name=config_name, cache=True
                     )
-                    
+
                     # Check basic properties
-                    if not hasattr(lm, 'transport'):
+                    if not hasattr(lm, "transport"):
                         self.logger.error(f"Missing transport in {config_name}")
                         return False
-                    
-                    if not hasattr(lm, 'host_type'):
+
+                    if not hasattr(lm, "host_type"):
                         self.logger.error(f"Missing host_type in {config_name}")
                         return False
 
@@ -170,12 +183,10 @@ class MCPIntegrationTester:
         """Test integration with Graph of Thoughts controller."""
         try:
             config_path = "graph_of_thoughts/language_models/mcp_config_template.json"
-            
+
             # Create MCP language model
             lm = language_models.MCPLanguageModel(
-                config_path=config_path,
-                model_name="mcp_claude_desktop",
-                cache=True
+                config_path=config_path, model_name="mcp_claude_desktop", cache=True
             )
 
             # Create simple operations graph
@@ -188,11 +199,7 @@ class MCPIntegrationTester:
                 gop,
                 SortingPrompter(),
                 SortingParser(),
-                {
-                    "original": "[3, 1, 4, 1, 5]",
-                    "current": "",
-                    "method": "io"
-                }
+                {"original": "[3, 1, 4, 1, 5]", "current": "", "method": "io"},
             )
 
             # Check that controller was created successfully
@@ -213,8 +220,7 @@ class MCPIntegrationTester:
             # Test invalid configuration
             try:
                 lm = language_models.MCPLanguageModel(
-                    config_path="nonexistent_config.json",
-                    model_name="invalid_config"
+                    config_path="nonexistent_config.json", model_name="invalid_config"
                 )
                 self.logger.error("Should have failed with invalid config")
                 return False
@@ -223,10 +229,11 @@ class MCPIntegrationTester:
 
             # Test invalid model name
             try:
-                config_path = "graph_of_thoughts/language_models/mcp_config_template.json"
+                config_path = (
+                    "graph_of_thoughts/language_models/mcp_config_template.json"
+                )
                 lm = language_models.MCPLanguageModel(
-                    config_path=config_path,
-                    model_name="nonexistent_model"
+                    config_path=config_path, model_name="nonexistent_model"
                 )
                 self.logger.error("Should have failed with invalid model name")
                 return False
@@ -245,20 +252,15 @@ class MCPIntegrationTester:
         try:
             config_path = "graph_of_thoughts/language_models/mcp_config_template.json"
             lm = language_models.MCPLanguageModel(
-                config_path=config_path,
-                model_name="mcp_claude_desktop",
-                cache=True
+                config_path=config_path, model_name="mcp_claude_desktop", cache=True
             )
 
             # Test single response parsing
             single_response = {
                 "model": "claude-3-5-sonnet",
                 "role": "assistant",
-                "content": {
-                    "type": "text",
-                    "text": "This is a test response."
-                },
-                "stopReason": "endTurn"
+                "content": {"type": "text", "text": "This is a test response."},
+                "stopReason": "endTurn",
             }
 
             texts = lm.get_response_texts(single_response)
@@ -283,7 +285,7 @@ class MCPIntegrationTester:
     def run_all_tests(self) -> Dict[str, bool]:
         """Run all tests and return results."""
         self.setup_logging()
-        
+
         tests = [
             ("Config Loading", self.test_config_loading),
             ("Transport Creation", self.test_transport_creation),
@@ -315,7 +317,7 @@ class MCPIntegrationTester:
 
         self.logger.info("=" * 50)
         self.logger.info(f"Test Results: {passed}/{total} passed")
-        
+
         if passed == total:
             self.logger.info("🎉 All tests passed!")
         else:
@@ -327,31 +329,37 @@ class MCPIntegrationTester:
         """Generate a test report."""
         report = "# MCP Integration Test Report\n\n"
         report += f"**Test Date:** {logging.Formatter().formatTime(logging.LogRecord('', 0, '', 0, '', (), None))}\n\n"
-        
+
         report += "## Test Results\n\n"
         for test_name, result in results.items():
             status = "✅ PASS" if result else "❌ FAIL"
             report += f"- **{test_name}:** {status}\n"
-        
+
         passed = sum(results.values())
         total = len(results)
         report += f"\n**Summary:** {passed}/{total} tests passed\n\n"
-        
+
         if passed == total:
-            report += "🎉 **All tests passed!** The MCP integration is working correctly.\n"
+            report += (
+                "🎉 **All tests passed!** The MCP integration is working correctly.\n"
+            )
         else:
             report += "⚠️ **Some tests failed.** Please check the logs for details.\n"
-        
+
         report += "\n## Next Steps\n\n"
         if passed == total:
             report += "- You can now use MCP language models in your Graph of Thoughts applications\n"
-            report += "- See the migration guide for instructions on updating your code\n"
+            report += (
+                "- See the migration guide for instructions on updating your code\n"
+            )
             report += "- Try the example scripts to see MCP in action\n"
         else:
-            report += "- Review the failed tests and check your MCP host configuration\n"
+            report += (
+                "- Review the failed tests and check your MCP host configuration\n"
+            )
             report += "- Ensure your MCP host is running and accessible\n"
             report += "- Check the MCP configuration file for any errors\n"
-        
+
         return report
 
 
@@ -370,10 +378,15 @@ def main() -> None:
     # Test configuration loading
     try:
         config_path = "graph_of_thoughts/language_models/mcp_config_template.json"
-        with open(config_path, 'r') as f:
+        with open(config_path, "r") as f:
             config = json.load(f)
 
-        required_configs = ["mcp_claude_desktop", "mcp_vscode", "mcp_cursor", "mcp_http_server"]
+        required_configs = [
+            "mcp_claude_desktop",
+            "mcp_vscode",
+            "mcp_cursor",
+            "mcp_http_server",
+        ]
         for config_name in required_configs:
             if config_name in config:
                 print(f"✅ Found configuration: {config_name}")

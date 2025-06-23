@@ -6,15 +6,16 @@
 #
 # main author: Nils Blach
 
-import os
-import re
-import logging
+import csv
 import datetime
 import json
-import csv
+import logging
+import os
+import re
 from statistics import fmean
-from typing import Dict, List, Callable, Set, Union
-from graph_of_thoughts import controller, language_models, operations, prompter, parser
+from typing import Callable, Dict, List, Set, Union
+
+from graph_of_thoughts import controller, language_models, operations, parser, prompter
 
 
 class DocMergePrompter(prompter.Prompter):

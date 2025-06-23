@@ -132,15 +132,22 @@ import asyncio
 import concurrent.futures
 import random
 import time
-from typing import Any, Dict, List, Optional, Union, Callable
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional, Union
 
 # Third-party imports
 import backoff
 
 # Local imports
 from .abstract_language_model import AbstractLanguageModel
+from .mcp_metrics import (
+    MCPMetricsCollector,
+    create_metrics_collector_from_config,
+    integrate_metrics_with_circuit_breaker,
+    set_global_metrics_collector,
+    setup_default_export_callbacks,
+)
 from .mcp_protocol import MCPProtocolValidator, create_sampling_request
 from .mcp_transport import (
     MCPConnectionError,
@@ -152,16 +159,12 @@ from .mcp_transport import (
     MCPValidationError,
     create_transport,
 )
-from .token_estimation import TokenEstimator, TokenEstimationConfig
-from .mcp_metrics import (
-    MCPMetricsCollector, create_metrics_collector_from_config,
-    setup_default_export_callbacks, set_global_metrics_collector,
-    integrate_metrics_with_circuit_breaker
-)
+from .token_estimation import TokenEstimationConfig, TokenEstimator
 
 
 class RetryStrategy(Enum):
     """Enumeration of available retry strategies."""
+
     EXPONENTIAL = "exponential"
     LINEAR = "linear"
     FIXED = "fixed"
@@ -170,6 +173,7 @@ class RetryStrategy(Enum):
 
 class BackoffJitterType(Enum):
     """Types of jitter to apply to backoff delays."""
+
     NONE = "none"
     FULL = "full"
     EQUAL = "equal"
@@ -191,6 +195,7 @@ class RetryConfig:
         timeout_multiplier: Multiplier for timeout on retries
         circuit_breaker_integration: Whether to integrate with circuit breaker
     """
+
     max_attempts: int = 3
     base_delay: float = 1.0
     max_delay: float = 60.0
@@ -231,7 +236,7 @@ class RetryManager:
         """
         # Get base delay based on strategy
         if self.config.strategy == RetryStrategy.EXPONENTIAL:
-            delay = self.config.base_delay * (self.config.backoff_multiplier ** attempt)
+            delay = self.config.base_delay * (self.config.backoff_multiplier**attempt)
         elif self.config.strategy == RetryStrategy.LINEAR:
             delay = self.config.base_delay * (attempt + 1)
         elif self.config.strategy == RetryStrategy.FIXED:
@@ -239,7 +244,7 @@ class RetryManager:
         elif self.config.strategy == RetryStrategy.ADAPTIVE:
             delay = self._calculate_adaptive_delay(attempt)
         else:
-            delay = self.config.base_delay * (self.config.backoff_multiplier ** attempt)
+            delay = self.config.base_delay * (self.config.backoff_multiplier**attempt)
 
         # Apply adaptive multiplier for adaptive strategy
         if self.config.strategy == RetryStrategy.ADAPTIVE:
@@ -255,7 +260,7 @@ class RetryManager:
 
     def _calculate_adaptive_delay(self, attempt: int) -> float:
         """Calculate delay for adaptive strategy."""
-        base = self.config.base_delay * (self.config.backoff_multiplier ** attempt)
+        base = self.config.base_delay * (self.config.backoff_multiplier**attempt)
 
         # Adjust based on recent success/failure patterns
         if self.consecutive_successes >= self.config.success_threshold_for_reduction:
@@ -287,11 +292,20 @@ class RetryManager:
 
     def get_max_attempts_for_error(self, error_type: type) -> int:
         """Get maximum attempts for specific error type."""
-        if issubclass(error_type, MCPConnectionError) and self.config.connection_error_max_attempts:
+        if (
+            issubclass(error_type, MCPConnectionError)
+            and self.config.connection_error_max_attempts
+        ):
             return self.config.connection_error_max_attempts
-        elif issubclass(error_type, MCPTimeoutError) and self.config.timeout_error_max_attempts:
+        elif (
+            issubclass(error_type, MCPTimeoutError)
+            and self.config.timeout_error_max_attempts
+        ):
             return self.config.timeout_error_max_attempts
-        elif issubclass(error_type, MCPServerError) and self.config.server_error_max_attempts:
+        elif (
+            issubclass(error_type, MCPServerError)
+            and self.config.server_error_max_attempts
+        ):
             return self.config.server_error_max_attempts
 
         return self.config.max_attempts
@@ -310,7 +324,7 @@ class RetryManager:
 
         # Don't retry certain server errors (4xx client errors)
         if isinstance(error, MCPServerError):
-            if hasattr(error, 'error_code') and error.error_code:
+            if hasattr(error, "error_code") and error.error_code:
                 try:
                     code = int(error.error_code)
                     if 400 <= code < 500:  # Client errors shouldn't be retried
@@ -328,9 +342,14 @@ class RetryManager:
         self.consecutive_failures = 0
 
         # Adjust adaptive multiplier
-        if (self.config.strategy == RetryStrategy.ADAPTIVE and
-            self.consecutive_successes >= self.config.success_threshold_for_reduction):
-            self.adaptive_delay_multiplier = max(0.5, self.adaptive_delay_multiplier * 0.9)
+        if (
+            self.config.strategy == RetryStrategy.ADAPTIVE
+            and self.consecutive_successes
+            >= self.config.success_threshold_for_reduction
+        ):
+            self.adaptive_delay_multiplier = max(
+                0.5, self.adaptive_delay_multiplier * 0.9
+            )
 
     def record_failure(self):
         """Record a failed operation for adaptive strategy."""
@@ -338,9 +357,13 @@ class RetryManager:
         self.consecutive_successes = 0
 
         # Adjust adaptive multiplier
-        if (self.config.strategy == RetryStrategy.ADAPTIVE and
-            self.consecutive_failures >= self.config.failure_threshold_for_increase):
-            self.adaptive_delay_multiplier = min(3.0, self.adaptive_delay_multiplier * 1.1)
+        if (
+            self.config.strategy == RetryStrategy.ADAPTIVE
+            and self.consecutive_failures >= self.config.failure_threshold_for_increase
+        ):
+            self.adaptive_delay_multiplier = min(
+                3.0, self.adaptive_delay_multiplier * 1.1
+            )
 
 
 class MCPLanguageModel(AbstractLanguageModel):
@@ -427,7 +450,10 @@ class MCPLanguageModel(AbstractLanguageModel):
     """
 
     def __init__(
-        self, config_path: str = "", model_name: str = "mcp_claude_desktop", cache: bool = False
+        self,
+        config_path: str = "",
+        model_name: str = "mcp_claude_desktop",
+        cache: bool = False,
     ) -> None:
         """
         Initialize the MCPLanguageModel instance with configuration, model details, and caching options.
@@ -443,7 +469,10 @@ class MCPLanguageModel(AbstractLanguageModel):
         cache_config = None
         if cache:
             from .caching import CacheConfig
-            cache_config = CacheConfig()  # Use defaults, will be overridden if config specifies
+
+            cache_config = (
+                CacheConfig()
+            )  # Use defaults, will be overridden if config specifies
 
         super().__init__(config_path, model_name, cache, cache_config)
         self.config: Dict = self.config[model_name]
@@ -452,12 +481,16 @@ class MCPLanguageModel(AbstractLanguageModel):
         self.config = self._migrate_config_if_needed(self.config)
 
         # Validate configuration using enhanced validator
-        from .mcp_protocol import MCPConfigurationValidator, MCPConfigurationError
+        from .mcp_protocol import MCPConfigurationError, MCPConfigurationValidator
 
-        self.config_validator = MCPConfigurationValidator(strict_mode=True, enable_security_checks=True)
+        self.config_validator = MCPConfigurationValidator(
+            strict_mode=True, enable_security_checks=True
+        )
         try:
             # Validate runtime configuration
-            self.config_validator.validate_runtime_configuration(self.config, model_name)
+            self.config_validator.validate_runtime_configuration(
+                self.config, model_name
+            )
         except MCPConfigurationError as e:
             raise ValueError(f"Invalid MCP configuration for {model_name}: {e}")
 
@@ -470,7 +503,9 @@ class MCPLanguageModel(AbstractLanguageModel):
         self.transport_config: Dict = self.config["transport"]
         self.client_info: Dict = self.config["client_info"]
         self.capabilities: Dict = self.config["capabilities"]
-        self.default_sampling_params: Dict = self.config.get("default_sampling_params", {})
+        self.default_sampling_params: Dict = self.config.get(
+            "default_sampling_params", {}
+        )
         self.connection_config: Dict = self.config.get("connection_config", {})
 
         # Cost tracking (application-specific, not part of MCP protocol)
@@ -488,19 +523,35 @@ class MCPLanguageModel(AbstractLanguageModel):
         # Advanced retry configuration
         retry_config_dict = self.config.get("retry_config", {})
         self.retry_config = RetryConfig(
-            max_attempts=retry_config_dict.get("max_attempts", self.default_retry_attempts),
+            max_attempts=retry_config_dict.get(
+                "max_attempts", self.default_retry_attempts
+            ),
             base_delay=retry_config_dict.get("base_delay", self.default_retry_delay),
             max_delay=retry_config_dict.get("max_delay", 60.0),
             backoff_multiplier=retry_config_dict.get("backoff_multiplier", 2.0),
             strategy=RetryStrategy(retry_config_dict.get("strategy", "exponential")),
-            jitter_type=BackoffJitterType(retry_config_dict.get("jitter_type", "equal")),
+            jitter_type=BackoffJitterType(
+                retry_config_dict.get("jitter_type", "equal")
+            ),
             timeout_multiplier=retry_config_dict.get("timeout_multiplier", 1.0),
-            circuit_breaker_integration=retry_config_dict.get("circuit_breaker_integration", True),
-            connection_error_max_attempts=retry_config_dict.get("connection_error_max_attempts"),
-            timeout_error_max_attempts=retry_config_dict.get("timeout_error_max_attempts"),
-            server_error_max_attempts=retry_config_dict.get("server_error_max_attempts"),
-            success_threshold_for_reduction=retry_config_dict.get("success_threshold_for_reduction", 5),
-            failure_threshold_for_increase=retry_config_dict.get("failure_threshold_for_increase", 3)
+            circuit_breaker_integration=retry_config_dict.get(
+                "circuit_breaker_integration", True
+            ),
+            connection_error_max_attempts=retry_config_dict.get(
+                "connection_error_max_attempts"
+            ),
+            timeout_error_max_attempts=retry_config_dict.get(
+                "timeout_error_max_attempts"
+            ),
+            server_error_max_attempts=retry_config_dict.get(
+                "server_error_max_attempts"
+            ),
+            success_threshold_for_reduction=retry_config_dict.get(
+                "success_threshold_for_reduction", 5
+            ),
+            failure_threshold_for_increase=retry_config_dict.get(
+                "failure_threshold_for_increase", 3
+            ),
         )
 
         # Initialize retry manager
@@ -509,6 +560,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         # Initialize transport using plugin system for enhanced functionality
         try:
             from .mcp_host_plugins import create_transport_from_plugin
+
             base_transport = create_transport_from_plugin(self.config)
             self.logger.info("Created transport using MCP plugin system")
         except ImportError:
@@ -517,19 +569,26 @@ class MCPLanguageModel(AbstractLanguageModel):
             self.logger.info("Created transport using standard method")
         except Exception as e:
             # If plugin system fails, fallback to standard method
-            self.logger.warning(f"Plugin system failed, falling back to standard transport: {e}")
+            self.logger.warning(
+                f"Plugin system failed, falling back to standard transport: {e}"
+            )
             base_transport = create_transport(self.config)
 
         # Wrap transport with circuit breaker if enabled
         try:
             from .mcp_circuit_breaker import wrap_transport_with_circuit_breaker
-            self.transport: MCPTransport = wrap_transport_with_circuit_breaker(base_transport, self.config)
-            if hasattr(self.transport, 'circuit_breaker'):
+
+            self.transport: MCPTransport = wrap_transport_with_circuit_breaker(
+                base_transport, self.config
+            )
+            if hasattr(self.transport, "circuit_breaker"):
                 self.logger.info("Enabled circuit breaker protection for MCP transport")
         except ImportError:
             self.transport: MCPTransport = base_transport
         except Exception as e:
-            self.logger.warning(f"Failed to enable circuit breaker, using transport without protection: {e}")
+            self.logger.warning(
+                f"Failed to enable circuit breaker, using transport without protection: {e}"
+            )
             self.transport: MCPTransport = base_transport
 
         self._connection_established = False
@@ -539,9 +598,15 @@ class MCPLanguageModel(AbstractLanguageModel):
         # Allow configuration override for token estimation
         if "token_estimation" in self.config:
             token_est_config = self.config["token_estimation"]
-            token_config.avg_chars_per_token = token_est_config.get("avg_chars_per_token", 3.5)
-            token_config.enable_subword_estimation = token_est_config.get("enable_subword_estimation", True)
-            token_config.code_token_multiplier = token_est_config.get("code_token_multiplier", 1.3)
+            token_config.avg_chars_per_token = token_est_config.get(
+                "avg_chars_per_token", 3.5
+            )
+            token_config.enable_subword_estimation = token_est_config.get(
+                "enable_subword_estimation", True
+            )
+            token_config.code_token_multiplier = token_est_config.get(
+                "code_token_multiplier", 1.3
+            )
 
         self.token_estimator = TokenEstimator(token_config)
 
@@ -555,10 +620,9 @@ class MCPLanguageModel(AbstractLanguageModel):
             set_global_metrics_collector(self.metrics_collector)
 
             # Integrate with circuit breaker if available
-            if hasattr(self.transport, 'circuit_breaker'):
+            if hasattr(self.transport, "circuit_breaker"):
                 integrate_metrics_with_circuit_breaker(
-                    self.transport.circuit_breaker,
-                    self.metrics_collector
+                    self.transport.circuit_breaker, self.metrics_collector
                 )
 
             self.logger.info("Initialized MCP metrics collection system")
@@ -570,6 +634,7 @@ class MCPLanguageModel(AbstractLanguageModel):
             cache_settings = self.config.get("caching", {})
             if cache_settings:
                 from .caching import CacheConfig
+
                 # Update cache configuration from model config
                 cache_config = CacheConfig(
                     max_size=cache_settings.get("max_size", 1000),
@@ -579,15 +644,18 @@ class MCPLanguageModel(AbstractLanguageModel):
                     metadata_cache_size=cache_settings.get("metadata_cache_size", 200),
                     response_ttl=cache_settings.get("response_ttl", 1800.0),
                     config_ttl=cache_settings.get("config_ttl", 7200.0),
-                    metadata_ttl=cache_settings.get("metadata_ttl", 3600.0)
+                    metadata_ttl=cache_settings.get("metadata_ttl", 3600.0),
                 )
                 # Reinitialize cache manager with updated config
                 from .caching import MultiLevelCacheManager
+
                 self.cache_manager = MultiLevelCacheManager(cache_config)
 
         # Legacy compatibility properties
         self.transport_type: str = self.transport_config.get("type", "stdio")
-        self.host_type: str = self.transport_config.get("command", "unknown")  # For backward compatibility
+        self.host_type: str = self.transport_config.get(
+            "command", "unknown"
+        )  # For backward compatibility
 
     def _migrate_config_if_needed(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -605,7 +673,9 @@ class MCPLanguageModel(AbstractLanguageModel):
 
         # Check if this is in old format
         if "transport_type" in config and "host_type" in config:
-            self.logger.info("Migrating configuration from old format to new MCP protocol format")
+            self.logger.info(
+                "Migrating configuration from old format to new MCP protocol format"
+            )
 
             # Create new format configuration
             new_config = {
@@ -613,39 +683,40 @@ class MCPLanguageModel(AbstractLanguageModel):
                     "type": config.get("transport_type", "stdio"),
                     "command": config.get("host_type", "unknown"),
                     "args": config.get("args", []),
-                    "env": config.get("env", {})
+                    "env": config.get("env", {}),
                 },
-                "client_info": {
-                    "name": "graph-of-thoughts",
-                    "version": "0.0.3"
-                },
-                "capabilities": {
-                    "sampling": {}
-                },
+                "client_info": {"name": "graph-of-thoughts", "version": "0.0.3"},
+                "capabilities": {"sampling": {}},
                 "default_sampling_params": {},
                 "connection_config": config.get("connection_config", {}),
-                "cost_tracking": {}
+                "cost_tracking": {},
             }
 
             # Migrate model_preferences to default_sampling_params
             if "model_preferences" in config:
-                new_config["default_sampling_params"]["modelPreferences"] = config["model_preferences"]
+                new_config["default_sampling_params"]["modelPreferences"] = config[
+                    "model_preferences"
+                ]
 
             # Migrate sampling_config to default_sampling_params
             if "sampling_config" in config:
                 sampling_config = config["sampling_config"]
-                new_config["default_sampling_params"].update({
-                    "temperature": sampling_config.get("temperature"),
-                    "maxTokens": sampling_config.get("max_tokens", 1000),
-                    "stopSequences": sampling_config.get("stop_sequences"),
-                    "includeContext": sampling_config.get("include_context", "none")
-                })
+                new_config["default_sampling_params"].update(
+                    {
+                        "temperature": sampling_config.get("temperature"),
+                        "maxTokens": sampling_config.get("max_tokens", 1000),
+                        "stopSequences": sampling_config.get("stop_sequences"),
+                        "includeContext": sampling_config.get(
+                            "include_context", "none"
+                        ),
+                    }
+                )
 
             # Migrate cost tracking
             if "prompt_token_cost" in config or "response_token_cost" in config:
                 new_config["cost_tracking"] = {
                     "prompt_token_cost": config.get("prompt_token_cost", 0.0),
-                    "response_token_cost": config.get("response_token_cost", 0.0)
+                    "response_token_cost": config.get("response_token_cost", 0.0),
                 }
 
             return new_config
@@ -679,7 +750,9 @@ class MCPLanguageModel(AbstractLanguageModel):
             except Exception as e:
                 self.logger.error(f"Error during disconnect: {e}")
 
-    def _create_sampling_request(self, query: str, num_responses: int = 1) -> Dict[str, Any]:
+    def _create_sampling_request(
+        self, query: str, num_responses: int = 1
+    ) -> Dict[str, Any]:
         """
         Create a properly formatted MCP sampling request following the specification.
 
@@ -691,15 +764,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         :rtype: Dict[str, Any]
         """
         # Create messages in MCP format
-        messages = [
-            {
-                "role": "user",
-                "content": {
-                    "type": "text",
-                    "text": query
-                }
-            }
-        ]
+        messages = [{"role": "user", "content": {"type": "text", "text": query}}]
 
         # Use the protocol utility to create the request
         return create_sampling_request(
@@ -713,8 +778,8 @@ class MCPLanguageModel(AbstractLanguageModel):
             metadata={
                 "num_responses": num_responses,
                 "source": "graph_of_thoughts",
-                "client": self.client_info["name"]
-            }
+                "client": self.client_info["name"],
+            },
         )
 
     async def _send_sampling_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
@@ -739,7 +804,9 @@ class MCPLanguageModel(AbstractLanguageModel):
             try:
                 # Track the request with metrics if available
                 if self.metrics_collector:
-                    with self.metrics_collector.track_request("sampling/createMessage") as tracker:
+                    with self.metrics_collector.track_request(
+                        "sampling/createMessage"
+                    ) as tracker:
                         response = await self.transport.send_sampling_request(request)
                         if tracker:
                             tracker.record_success(response)
@@ -762,7 +829,9 @@ class MCPLanguageModel(AbstractLanguageModel):
 
                 # Track error with metrics if available
                 if self.metrics_collector:
-                    with self.metrics_collector.track_request("sampling/createMessage") as tracker:
+                    with self.metrics_collector.track_request(
+                        "sampling/createMessage"
+                    ) as tracker:
                         if tracker:
                             tracker.record_error(type(e).__name__)
 
@@ -792,8 +861,12 @@ class MCPLanguageModel(AbstractLanguageModel):
                 await asyncio.sleep(delay)
 
         # All retries exhausted
-        self.logger.error(f"All {self.retry_config.max_attempts} attempts failed for sampling request")
-        raise MCPTransportError(f"Sampling request failed after {self.retry_config.max_attempts} attempts: {last_exception}")
+        self.logger.error(
+            f"All {self.retry_config.max_attempts} attempts failed for sampling request"
+        )
+        raise MCPTransportError(
+            f"Sampling request failed after {self.retry_config.max_attempts} attempts: {last_exception}"
+        )
 
     def query(self, query: str, num_responses: int = 1) -> Union[List[Dict], Dict]:
         """
@@ -851,9 +924,9 @@ class MCPLanguageModel(AbstractLanguageModel):
         if self.cache and self.cache_manager:
             # Create cache key including all relevant parameters
             cache_params = {
-                'num_responses': num_responses,
-                'model_name': self.model_name,
-                'sampling_params': self.default_sampling_params
+                "num_responses": num_responses,
+                "model_name": self.model_name,
+                "sampling_params": self.default_sampling_params,
             }
             cached_response = self.cache_manager.get_response(query, **cache_params)
             if cached_response is not None:
@@ -861,7 +934,11 @@ class MCPLanguageModel(AbstractLanguageModel):
                 return cached_response
 
         # Fallback to legacy cache for backward compatibility
-        if self.cache and hasattr(self, 'response_cache') and query in self.response_cache:
+        if (
+            self.cache
+            and hasattr(self, "response_cache")
+            and query in self.response_cache
+        ):
             return self.response_cache[query]
 
         # Use proper event loop management
@@ -870,20 +947,22 @@ class MCPLanguageModel(AbstractLanguageModel):
         # Cache the response using intelligent cache
         if self.cache and self.cache_manager:
             cache_params = {
-                'num_responses': num_responses,
-                'model_name': self.model_name,
-                'sampling_params': self.default_sampling_params
+                "num_responses": num_responses,
+                "model_name": self.model_name,
+                "sampling_params": self.default_sampling_params,
             }
             self.cache_manager.put_response(query, response, **cache_params)
             self.logger.debug(f"Cached response for query: {query[:50]}...")
 
         # Also cache in legacy cache for backward compatibility
-        if self.cache and hasattr(self, 'response_cache'):
+        if self.cache and hasattr(self, "response_cache"):
             self.response_cache[query] = response
 
         return response
 
-    def _run_async_query(self, query: str, num_responses: int = 1) -> Union[List[Dict], Dict]:
+    def _run_async_query(
+        self, query: str, num_responses: int = 1
+    ) -> Union[List[Dict], Dict]:
         """
         Helper method to run async query with optimized event loop management.
 
@@ -898,6 +977,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         :rtype: Union[List[Dict], Dict]
         :raises RuntimeError: If called from within an async context (use _query_async instead)
         """
+
         async def _run_query():
             async with self:  # Use async context manager
                 return await self._query_async(query, num_responses)
@@ -918,7 +998,9 @@ class MCPLanguageModel(AbstractLanguageModel):
                 # Re-raise the error about being in async context
                 raise
 
-    async def _query_async(self, query: str, num_responses: int = 1) -> Union[List[Dict], Dict]:
+    async def _query_async(
+        self, query: str, num_responses: int = 1
+    ) -> Union[List[Dict], Dict]:
         """
         Async implementation of query.
 
@@ -930,7 +1012,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         :rtype: Union[List[Dict], Dict]
         """
         request = self._create_sampling_request(query, num_responses)
-        
+
         if num_responses == 1:
             response = await self._send_sampling_request(request)
             self._update_token_usage(response, prompt_text=query)
@@ -945,7 +1027,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         max_concurrent: Optional[int] = None,
         batch_size: Optional[int] = None,
         retry_attempts: Optional[int] = None,
-        retry_delay: Optional[float] = None
+        retry_delay: Optional[float] = None,
     ) -> List[Dict[str, Any]]:
         """
         Process multiple queries concurrently with batch processing optimizations.
@@ -989,7 +1071,9 @@ class MCPLanguageModel(AbstractLanguageModel):
             ```
         """
         if not self._connected:
-            raise ConnectionError("Not connected to MCP server. Use async context manager or call connect().")
+            raise ConnectionError(
+                "Not connected to MCP server. Use async context manager or call connect()."
+            )
 
         if not queries:
             raise ValueError("queries list cannot be empty")
@@ -1000,13 +1084,17 @@ class MCPLanguageModel(AbstractLanguageModel):
         retry_attempts = retry_attempts or self.default_retry_attempts
         retry_delay = retry_delay or self.default_retry_delay
 
-        self.logger.info(f"Processing batch of {len(queries)} queries with max_concurrent={max_concurrent}")
+        self.logger.info(
+            f"Processing batch of {len(queries)} queries with max_concurrent={max_concurrent}"
+        )
 
         # Process queries in batches to manage memory and server load
         all_responses = []
         for i in range(0, len(queries), batch_size):
-            batch_queries = queries[i:i + batch_size]
-            self.logger.debug(f"Processing batch {i//batch_size + 1}: {len(batch_queries)} queries")
+            batch_queries = queries[i : i + batch_size]
+            self.logger.debug(
+                f"Processing batch {i//batch_size + 1}: {len(batch_queries)} queries"
+            )
 
             # Create semaphore to limit concurrent requests
             semaphore = asyncio.Semaphore(max_concurrent)
@@ -1029,11 +1117,8 @@ class MCPLanguageModel(AbstractLanguageModel):
                     self.logger.error(f"Query {i+j} failed permanently: {response}")
                     # Create error response in expected format
                     error_response = {
-                        "content": {
-                            "type": "text",
-                            "text": f"Error: {str(response)}"
-                        },
-                        "metadata": {"error": True, "error_message": str(response)}
+                        "content": {"type": "text", "text": f"Error: {str(response)}"},
+                        "metadata": {"error": True, "error_message": str(response)},
                     }
                     processed_responses.append(error_response)
                 else:
@@ -1049,7 +1134,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         query: str,
         semaphore: asyncio.Semaphore,
         retry_attempts: int,
-        retry_delay: float
+        retry_delay: float,
     ) -> Dict[str, Any]:
         """
         Process a single query with advanced retry logic and concurrency control.
@@ -1077,7 +1162,7 @@ class MCPLanguageModel(AbstractLanguageModel):
                 strategy=self.retry_config.strategy,
                 jitter_type=self.retry_config.jitter_type,
                 timeout_multiplier=self.retry_config.timeout_multiplier,
-                circuit_breaker_integration=self.retry_config.circuit_breaker_integration
+                circuit_breaker_integration=self.retry_config.circuit_breaker_integration,
             )
             temp_retry_manager = RetryManager(temp_retry_config)
 
@@ -1122,7 +1207,9 @@ class MCPLanguageModel(AbstractLanguageModel):
 
             raise last_exception
 
-    def _update_token_usage(self, response: Dict[str, Any], prompt_text: Optional[str] = None) -> None:
+    def _update_token_usage(
+        self, response: Dict[str, Any], prompt_text: Optional[str] = None
+    ) -> None:
         """
         Update token usage and cost tracking based on response using improved estimation.
         Note: This is application-specific functionality, not part of the MCP protocol.
@@ -1141,7 +1228,9 @@ class MCPLanguageModel(AbstractLanguageModel):
                 completion_tokens = usage.get("completion_tokens", 0)
                 self.prompt_tokens += prompt_tokens
                 self.completion_tokens += completion_tokens
-                self.logger.debug(f"Using actual token usage: {prompt_tokens} prompt, {completion_tokens} completion")
+                self.logger.debug(
+                    f"Using actual token usage: {prompt_tokens} prompt, {completion_tokens} completion"
+                )
             else:
                 # Use improved token estimation as fallback
                 content = response.get("content", {})
@@ -1162,7 +1251,9 @@ class MCPLanguageModel(AbstractLanguageModel):
                         self.prompt_tokens += estimated_prompt_tokens
                     else:
                         # Fallback: estimate based on response length and typical prompt/response ratio
-                        estimated_prompt_tokens = max(20, estimated_completion_tokens // 3)
+                        estimated_prompt_tokens = max(
+                            20, estimated_completion_tokens // 3
+                        )
                         self.prompt_tokens += estimated_prompt_tokens
 
                     self.logger.debug(
@@ -1178,7 +1269,9 @@ class MCPLanguageModel(AbstractLanguageModel):
                 + self.response_token_cost * completion_tokens_k
             )
 
-            self.logger.debug(f"Token usage updated. Total: {self.prompt_tokens + self.completion_tokens} tokens, Cost: ${self.cost:.4f}")
+            self.logger.debug(
+                f"Token usage updated. Total: {self.prompt_tokens + self.completion_tokens} tokens, Cost: ${self.cost:.4f}"
+            )
 
         except Exception as e:
             self.logger.warning(f"Failed to update token usage: {e}")
@@ -1251,7 +1344,9 @@ class MCPLanguageModel(AbstractLanguageModel):
                         texts.append(f"[Image content: {mime_type}]")
                     else:
                         # Unknown content type
-                        texts.append(f"[Unknown content type: {content.get('type', 'none')}]")
+                        texts.append(
+                            f"[Unknown content type: {content.get('type', 'none')}]"
+                        )
                 else:
                     # Fallback for unexpected response format
                     self.logger.warning(f"Unexpected response format: {response}")
@@ -1269,7 +1364,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         Returns:
             Dict with circuit breaker status or None if not enabled
         """
-        if hasattr(self.transport, 'get_circuit_breaker_metrics'):
+        if hasattr(self.transport, "get_circuit_breaker_metrics"):
             try:
                 metrics = self.transport.get_circuit_breaker_metrics()
                 state = self.transport.get_circuit_breaker_state()
@@ -1282,7 +1377,7 @@ class MCPLanguageModel(AbstractLanguageModel):
                     "failed_requests": metrics.failed_requests,
                     "circuit_open_count": metrics.circuit_open_count,
                     "last_failure_time": metrics.last_failure_time,
-                    "state_change_time": metrics.state_change_time
+                    "state_change_time": metrics.state_change_time,
                 }
             except Exception as e:
                 self.logger.warning(f"Failed to get circuit breaker status: {e}")
@@ -1296,7 +1391,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         Returns:
             True if service is healthy or circuit breaker not enabled
         """
-        if hasattr(self.transport, 'is_circuit_healthy'):
+        if hasattr(self.transport, "is_circuit_healthy"):
             return self.transport.is_circuit_healthy()
         return True  # Assume healthy if no circuit breaker
 
@@ -1346,7 +1441,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         health_status = {
             "timestamp": time.time(),
             "overall_status": "unknown",
-            "components": {}
+            "components": {},
         }
 
         # Check metrics-based health
@@ -1360,19 +1455,25 @@ class MCPLanguageModel(AbstractLanguageModel):
             cb_health = {
                 "status": "healthy" if cb_status["is_healthy"] else "unhealthy",
                 "state": cb_status["state"],
-                "error_rate": (cb_status["failed_requests"] / max(cb_status["total_requests"], 1)) * 100
+                "error_rate": (
+                    cb_status["failed_requests"] / max(cb_status["total_requests"], 1)
+                )
+                * 100,
             }
             health_status["components"]["circuit_breaker"] = cb_health
 
         # Check connection health
         connection_health = {
             "status": "healthy" if self._connection_established else "disconnected",
-            "connected": self._connection_established
+            "connected": self._connection_established,
         }
         health_status["components"]["connection"] = connection_health
 
         # Determine overall status
-        component_statuses = [comp.get("status", "unknown") for comp in health_status["components"].values()]
+        component_statuses = [
+            comp.get("status", "unknown")
+            for comp in health_status["components"].values()
+        ]
         if "unhealthy" in component_statuses:
             health_status["overall_status"] = "unhealthy"
         elif "degraded" in component_statuses:
@@ -1419,7 +1520,12 @@ class MCPLanguageModel(AbstractLanguageModel):
         await self._ensure_connection()
         return self
 
-    async def __aexit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[Any]) -> None:
+    async def __aexit__(
+        self,
+        exc_type: Optional[type],
+        exc_val: Optional[Exception],
+        exc_tb: Optional[Any],
+    ) -> None:
         """
         Async context manager exit.
         Properly disconnects from the MCP server.

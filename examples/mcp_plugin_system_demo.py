@@ -30,62 +30,54 @@ Features Demonstrated:
 """
 
 import json
-import sys
 import os
+import sys
 from pathlib import Path
 
 # Add the project root to the path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from graph_of_thoughts.language_models.mcp_plugin_manager import MCPPluginManager
 from graph_of_thoughts.language_models.mcp_host_plugins import (
-    MCPHostPlugin, HostCapabilities, register_host_plugin
+    HostCapabilities,
+    MCPHostPlugin,
+    register_host_plugin,
 )
+from graph_of_thoughts.language_models.mcp_plugin_manager import MCPPluginManager
 
 
 class CustomMCPHostPlugin(MCPHostPlugin):
     """Example custom MCP host plugin for demonstration."""
-    
+
     def get_host_name(self) -> str:
         return "custom_demo_host"
-    
+
     def get_display_name(self) -> str:
         return "Custom Demo Host"
-    
+
     def get_default_config(self) -> dict:
         return {
             "transport": {
                 "type": "stdio",
                 "command": "custom-mcp-host",
                 "args": ["--demo-mode"],
-                "env": {"DEMO_MODE": "true"}
+                "env": {"DEMO_MODE": "true"},
             },
-            "client_info": {
-                "name": "graph-of-thoughts",
-                "version": "0.0.3"
-            },
-            "capabilities": {
-                "sampling": {},
-                "tools": {},
-                "resources": {}
-            },
+            "client_info": {"name": "graph-of-thoughts", "version": "0.0.3"},
+            "capabilities": {"sampling": {}, "tools": {}, "resources": {}},
             "default_sampling_params": {
                 "temperature": 0.8,
                 "maxTokens": 2048,
-                "includeContext": "thisServer"
+                "includeContext": "thisServer",
             },
             "connection_config": {
                 "timeout": 45.0,
                 "retry_attempts": 2,
-                "retry_delay": 1.5
+                "retry_delay": 1.5,
             },
-            "cost_tracking": {
-                "prompt_token_cost": 0.001,
-                "response_token_cost": 0.005
-            }
+            "cost_tracking": {"prompt_token_cost": 0.001, "response_token_cost": 0.005},
         }
-    
+
     def get_capabilities(self) -> HostCapabilities:
         return HostCapabilities(
             supports_resources=True,
@@ -95,23 +87,23 @@ class CustomMCPHostPlugin(MCPHostPlugin):
             supports_roots=False,
             supports_discovery=True,
             transport_types=["stdio"],
-            authentication_methods=[]
+            authentication_methods=[],
         )
-    
+
     def _validate_host_specific_config(self, config: dict) -> bool:
         """Custom validation for demo host."""
         transport_config = config.get("transport", {})
-        
+
         # Check for demo-specific requirements
         command = transport_config.get("command", "")
         if "custom" not in command.lower():
             print(f"Warning: Command '{command}' may not be the custom demo host")
-        
+
         # Validate demo environment variable
         env = transport_config.get("env", {})
         if env.get("DEMO_MODE") != "true":
             print("Warning: DEMO_MODE environment variable not set to 'true'")
-        
+
         return True
 
 
@@ -119,16 +111,16 @@ def demonstrate_plugin_discovery():
     """Demonstrate plugin discovery and listing capabilities."""
     print("🔍 Plugin Discovery and Listing")
     print("=" * 50)
-    
+
     manager = MCPPluginManager()
-    
+
     # List all available hosts
     hosts = manager.list_hosts()
     print(f"Available MCP hosts: {len(hosts)}")
     for host in hosts:
         print(f"  • {host}")
     print()
-    
+
     # Get detailed information for each host
     print("Host Details:")
     for host_name in hosts:
@@ -148,22 +140,22 @@ def demonstrate_capability_queries():
     """Demonstrate capability-based host queries."""
     print("🎯 Capability-Based Host Queries")
     print("=" * 50)
-    
+
     manager = MCPPluginManager()
-    
+
     # Find hosts that support specific capabilities
     capabilities_to_check = [
         "supports_tools",
-        "supports_resources", 
+        "supports_resources",
         "supports_prompts",
         "supports_sampling",
-        "supports_discovery"
+        "supports_discovery",
     ]
-    
+
     for capability in capabilities_to_check:
         hosts = manager.get_hosts_by_capability(capability)
         print(f"{capability}: {hosts}")
-    
+
     # Find hosts by transport type
     print(f"\nStdio transport hosts: {manager.get_hosts_by_transport('stdio')}")
     print(f"HTTP transport hosts: {manager.get_hosts_by_transport('http')}")
@@ -174,9 +166,9 @@ def demonstrate_config_generation():
     """Demonstrate configuration template generation."""
     print("⚙️  Configuration Template Generation")
     print("=" * 50)
-    
+
     manager = MCPPluginManager()
-    
+
     # Generate templates for each host
     hosts = manager.list_hosts()
     for host_name in hosts:
@@ -195,31 +187,33 @@ def demonstrate_custom_plugin():
     """Demonstrate custom plugin registration."""
     print("🔧 Custom Plugin Registration")
     print("=" * 50)
-    
+
     manager = MCPPluginManager()
-    
+
     # Show hosts before registration
     print("Hosts before custom plugin registration:")
     print(f"  {manager.list_hosts()}")
-    
+
     # Register custom plugin
     custom_plugin = CustomMCPHostPlugin()
     success = manager.register_plugin(custom_plugin)
-    
+
     if success:
-        print(f"\n✅ Successfully registered custom plugin: {custom_plugin.get_display_name()}")
-        
+        print(
+            f"\n✅ Successfully registered custom plugin: {custom_plugin.get_display_name()}"
+        )
+
         # Show hosts after registration
         print("\nHosts after custom plugin registration:")
         print(f"  {manager.list_hosts()}")
-        
+
         # Show custom plugin details
         info = manager.get_host_info("custom_demo_host")
         if info:
             print(f"\n📋 Custom Plugin Details:")
             print(f"   Display Name: {info['display_name']}")
             print(f"   Capabilities: {info['capabilities']}")
-            
+
         # Generate config template for custom plugin
         template = manager.generate_config_template("custom_demo_host")
         if template:
@@ -235,53 +229,36 @@ def demonstrate_config_validation():
     """Demonstrate configuration validation."""
     print("✅ Configuration Validation")
     print("=" * 50)
-    
+
     manager = MCPPluginManager()
-    
+
     # Test valid configuration
     valid_config = {
         "transport": {
             "type": "stdio",
             "command": "claude-desktop",
-            "args": ["--mcp-server"]
+            "args": ["--mcp-server"],
         },
-        "client_info": {
-            "name": "test-app",
-            "version": "1.0.0"
-        },
-        "capabilities": {
-            "sampling": {}
-        }
+        "client_info": {"name": "test-app", "version": "1.0.0"},
+        "capabilities": {"sampling": {}},
     }
-    
+
     is_valid = manager.validate_config("claude_desktop", valid_config)
     print(f"Valid Claude Desktop config: {is_valid}")
-    
+
     # Test invalid configuration
-    invalid_config = {
-        "transport": {
-            "type": "invalid_transport"
-        }
-    }
-    
+    invalid_config = {"transport": {"type": "invalid_transport"}}
+
     is_valid = manager.validate_config("claude_desktop", invalid_config)
     print(f"Invalid config: {is_valid}")
-    
+
     # Test HTTP configuration
     http_config = {
-        "transport": {
-            "type": "http",
-            "url": "https://api.example.com/mcp"
-        },
-        "client_info": {
-            "name": "test-app",
-            "version": "1.0.0"
-        },
-        "capabilities": {
-            "sampling": {}
-        }
+        "transport": {"type": "http", "url": "https://api.example.com/mcp"},
+        "client_info": {"name": "test-app", "version": "1.0.0"},
+        "capabilities": {"sampling": {}},
     }
-    
+
     is_valid = manager.validate_config("http_server", http_config)
     print(f"Valid HTTP server config: {is_valid}")
     print()
@@ -291,9 +268,9 @@ def demonstrate_config_creation():
     """Demonstrate dynamic configuration creation."""
     print("🏗️  Dynamic Configuration Creation")
     print("=" * 50)
-    
+
     manager = MCPPluginManager()
-    
+
     # Create configuration with overrides
     config = manager.create_host_config(
         "claude_desktop",
@@ -301,10 +278,10 @@ def demonstrate_config_creation():
             "transport.command": "my-custom-claude",
             "transport.args": ["--custom-mode"],
             "default_sampling_params.temperature": 0.5,
-            "connection_config.timeout": 60.0
-        }
+            "connection_config.timeout": 60.0,
+        },
     )
-    
+
     if config:
         print("📄 Dynamically created configuration with overrides:")
         print(json.dumps(config, indent=2))
@@ -318,7 +295,7 @@ def main():
     print("🚀 MCP Plugin System Demonstration")
     print("=" * 60)
     print()
-    
+
     try:
         # Run all demonstrations
         demonstrate_plugin_discovery()
@@ -327,15 +304,16 @@ def main():
         demonstrate_custom_plugin()
         demonstrate_config_validation()
         demonstrate_config_creation()
-        
+
         print("✨ Plugin system demonstration completed successfully!")
-        
+
     except Exception as e:
         print(f"❌ Error during demonstration: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
-    
+
     return 0
 
 

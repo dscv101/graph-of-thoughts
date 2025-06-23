@@ -1,1 +1,1 @@
-from .parser import Parser, BatchParser
+from .parser import BatchParser, Parser

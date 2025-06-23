@@ -163,16 +163,17 @@ Performance Considerations:
 
 import asyncio
 import logging
-from typing import Dict, List, Any, Optional, Union
-from .mcp_transport import MCPTransport, MCPTransportError
+from typing import Any, Dict, List, Optional, Union
+
 from .mcp_protocol import (
-    MCPProtocolValidator,
-    create_sampling_request,
+    MCPIncludeContext,
     MCPMessage,
     MCPMessageContent,
     MCPModelPreferences,
-    MCPIncludeContext
+    MCPProtocolValidator,
+    create_sampling_request,
 )
+from .mcp_transport import MCPTransport, MCPTransportError
 
 
 class MCPSamplingManager:
@@ -207,7 +208,7 @@ class MCPSamplingManager:
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         stop_sequences: Optional[List[str]] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Create a message using MCP sampling following the official specification.
@@ -246,7 +247,9 @@ class MCPSamplingManager:
         # Validate include_context
         valid_contexts = [c.value for c in MCPIncludeContext]
         if include_context not in valid_contexts:
-            raise ValueError(f"Invalid include_context: {include_context}. Must be one of {valid_contexts}")
+            raise ValueError(
+                f"Invalid include_context: {include_context}. Must be one of {valid_contexts}"
+            )
 
         # Create the sampling request using the protocol utility
         request = create_sampling_request(
@@ -260,8 +263,8 @@ class MCPSamplingManager:
             metadata={
                 **metadata,
                 "source": "graph_of_thoughts_sampling",
-                "manager_version": "1.0.0"
-            }
+                "manager_version": "1.0.0",
+            },
         )
 
         # Validate the request
@@ -276,10 +279,12 @@ class MCPSamplingManager:
             # Update conversation history with properly formatted messages
             self.conversation_history.extend(messages)
             if response.get("content"):
-                self.conversation_history.append({
-                    "role": response.get("role", "assistant"),
-                    "content": response["content"]
-                })
+                self.conversation_history.append(
+                    {
+                        "role": response.get("role", "assistant"),
+                        "content": response["content"],
+                    }
+                )
 
             return response
 
@@ -291,10 +296,7 @@ class MCPSamplingManager:
             raise MCPTransportError(f"Sampling failed: {e}")
 
     async def create_simple_completion(
-        self,
-        prompt: str,
-        system_prompt: Optional[str] = None,
-        **kwargs
+        self, prompt: str, system_prompt: Optional[str] = None, **kwargs
     ) -> str:
         """
         Create a simple text completion using MCP sampling.
@@ -307,20 +309,10 @@ class MCPSamplingManager:
         :return: The text response
         :rtype: str
         """
-        messages = [
-            {
-                "role": "user",
-                "content": {
-                    "type": "text",
-                    "text": prompt
-                }
-            }
-        ]
+        messages = [{"role": "user", "content": {"type": "text", "text": prompt}}]
 
         response = await self.create_message(
-            messages=messages,
-            system_prompt=system_prompt,
-            **kwargs
+            messages=messages, system_prompt=system_prompt, **kwargs
         )
 
         # Extract text from response
@@ -331,10 +323,7 @@ class MCPSamplingManager:
             return str(response)
 
     async def create_conversation_completion(
-        self,
-        new_message: str,
-        use_history: bool = True,
-        **kwargs
+        self, new_message: str, use_history: bool = True, **kwargs
     ) -> str:
         """
         Create a completion as part of an ongoing conversation.
@@ -348,17 +337,13 @@ class MCPSamplingManager:
         :rtype: str
         """
         messages = []
-        
+
         if use_history:
             messages.extend(self.conversation_history)
-        
-        messages.append({
-            "role": "user",
-            "content": {
-                "type": "text",
-                "text": new_message
-            }
-        })
+
+        messages.append(
+            {"role": "user", "content": {"type": "text", "text": new_message}}
+        )
 
         response = await self.create_message(messages=messages, **kwargs)
 
@@ -370,9 +355,7 @@ class MCPSamplingManager:
             return str(response)
 
     async def create_multi_turn_completion(
-        self,
-        conversation: List[Dict[str, str]],
-        **kwargs
+        self, conversation: List[Dict[str, str]], **kwargs
     ) -> str:
         """
         Create a completion for a multi-turn conversation.
@@ -385,13 +368,12 @@ class MCPSamplingManager:
         """
         messages = []
         for turn in conversation:
-            messages.append({
-                "role": turn["role"],
-                "content": {
-                    "type": "text",
-                    "text": turn["content"]
+            messages.append(
+                {
+                    "role": turn["role"],
+                    "content": {"type": "text", "text": turn["content"]},
                 }
-            })
+            )
 
         response = await self.create_message(messages=messages, **kwargs)
 
@@ -419,10 +401,7 @@ class MCPSamplingManager:
         return self.conversation_history.copy()
 
     async def create_batch_completions(
-        self,
-        prompts: List[str],
-        system_prompt: Optional[str] = None,
-        **kwargs
+        self, prompts: List[str], system_prompt: Optional[str] = None, **kwargs
     ) -> List[str]:
         """
         Create multiple completions in batch.
@@ -438,14 +417,12 @@ class MCPSamplingManager:
         tasks = []
         for prompt in prompts:
             task = self.create_simple_completion(
-                prompt=prompt,
-                system_prompt=system_prompt,
-                **kwargs
+                prompt=prompt, system_prompt=system_prompt, **kwargs
             )
             tasks.append(task)
 
         responses = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         # Handle exceptions and convert to strings
         results = []
         for i, response in enumerate(responses):
@@ -454,15 +431,11 @@ class MCPSamplingManager:
                 results.append(f"Error: {str(response)}")
             else:
                 results.append(response)
-        
+
         return results
 
     async def create_completion_with_retry(
-        self,
-        prompt: str,
-        max_retries: int = 3,
-        retry_delay: float = 1.0,
-        **kwargs
+        self, prompt: str, max_retries: int = 3, retry_delay: float = 1.0, **kwargs
     ) -> str:
         """
         Create a completion with enhanced retry logic.
@@ -478,7 +451,12 @@ class MCPSamplingManager:
         :rtype: str
         """
         # Import retry classes locally to avoid circular imports
-        from .mcp_client import RetryConfig, RetryManager, RetryStrategy, BackoffJitterType
+        from .mcp_client import (
+            BackoffJitterType,
+            RetryConfig,
+            RetryManager,
+            RetryStrategy,
+        )
 
         # Create a retry configuration for this completion
         retry_config = RetryConfig(
@@ -489,7 +467,7 @@ class MCPSamplingManager:
             strategy=RetryStrategy.EXPONENTIAL,
             jitter_type=BackoffJitterType.EQUAL,
             timeout_multiplier=1.0,
-            circuit_breaker_integration=False  # Disable for sampling manager
+            circuit_breaker_integration=False,  # Disable for sampling manager
         )
 
         retry_manager = RetryManager(retry_config)

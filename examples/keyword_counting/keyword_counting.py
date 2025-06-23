@@ -10,15 +10,16 @@
 # main author: Nils Blach
 # contributions: Ales Kubicek
 
-import os
-import logging
+import csv
 import datetime
 import json
-import csv
+import logging
+import os
 from collections import Counter
 from functools import partial
-from typing import Dict, List, Callable, Union
-from graph_of_thoughts import controller, language_models, operations, prompter, parser
+from typing import Callable, Dict, List, Union
+
+from graph_of_thoughts import controller, language_models, operations, parser, prompter
 
 
 def string_to_list(string: str) -> List[str]:

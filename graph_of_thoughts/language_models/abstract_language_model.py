@@ -6,13 +6,13 @@
 #
 # main author: Nils Blach
 
-from abc import ABC, abstractmethod
-from typing import List, Dict, Union, Any, Optional
 import json
-import os
 import logging
+import os
+from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional, Union
 
-from .caching import get_cache_manager, CacheConfig
+from .caching import CacheConfig, get_cache_manager
 
 
 class AbstractLanguageModel(ABC):
@@ -21,7 +21,11 @@ class AbstractLanguageModel(ABC):
     """
 
     def __init__(
-        self, config_path: str = "", model_name: str = "", cache: bool = False, cache_config: Optional[CacheConfig] = None
+        self,
+        config_path: str = "",
+        model_name: str = "",
+        cache: bool = False,
+        cache_config: Optional[CacheConfig] = None,
     ) -> None:
         """
         Initialize the AbstractLanguageModel instance with configuration, model details, and caching options.
@@ -71,7 +75,9 @@ class AbstractLanguageModel(ABC):
             cached_config = self.cache_manager.get_config(path, self.model_name)
             if cached_config is not None:
                 self.config = cached_config
-                self.logger.debug(f"Loaded config from cache for {path} and {self.model_name}")
+                self.logger.debug(
+                    f"Loaded config from cache for {path} and {self.model_name}"
+                )
                 return
 
         # Load from file
@@ -88,7 +94,7 @@ class AbstractLanguageModel(ABC):
         """
         Clear the response cache and intelligent cache.
         """
-        if hasattr(self, 'response_cache'):
+        if hasattr(self, "response_cache"):
             self.response_cache.clear()
         if self.cache_manager:
             self.cache_manager.clear_all()

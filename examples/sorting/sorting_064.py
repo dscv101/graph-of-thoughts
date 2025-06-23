@@ -6,13 +6,14 @@
 #
 # main author: Nils Blach
 
-import os
-import logging
+import csv
 import datetime
 import json
-import csv
-from typing import Dict, List, Callable, Union
-from graph_of_thoughts import controller, language_models, operations, prompter, parser
+import logging
+import os
+from typing import Callable, Dict, List, Union
+
+from graph_of_thoughts import controller, language_models, operations, parser, prompter
 
 # This is a hack to also allow execution of this file from the examples directory
 try:

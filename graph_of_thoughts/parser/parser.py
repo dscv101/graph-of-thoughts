@@ -7,9 +7,10 @@
 # main authors: Robert Gerstenberger, Nils Blach
 
 from __future__ import annotations
+
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, Union, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 
 class Parser(ABC):
@@ -118,7 +119,7 @@ class BatchParser(Parser):
         parse_method: str,
         states: List[Dict],
         batch_texts: List[List[str]],
-        **kwargs
+        **kwargs,
     ) -> Tuple[List[Union[Dict, List[Dict], float, bool]], List[Optional[Exception]]]:
         """
         Parse multiple responses using the specified parsing method with batch processing.
@@ -156,7 +157,9 @@ class BatchParser(Parser):
                 errors.append(None)
 
             except Exception as e:
-                self.logger.error(f"Error parsing batch item {i} with method {parse_method}: {e}")
+                self.logger.error(
+                    f"Error parsing batch item {i} with method {parse_method}: {e}"
+                )
 
                 if self.error_handling_strategy == "raise_on_error":
                     raise e
@@ -178,14 +181,14 @@ class BatchParser(Parser):
 
                     errors.append(e)
                 else:
-                    raise ValueError(f"Unknown error handling strategy: {self.error_handling_strategy}")
+                    raise ValueError(
+                        f"Unknown error handling strategy: {self.error_handling_strategy}"
+                    )
 
         return results, errors
 
     def parse_batch_generate_answers(
-        self,
-        states: List[Dict],
-        batch_texts: List[List[str]]
+        self, states: List[Dict], batch_texts: List[List[str]]
     ) -> Tuple[List[List[Dict]], List[Optional[Exception]]]:
         """
         Parse multiple generate responses in batch.
@@ -200,9 +203,7 @@ class BatchParser(Parser):
         return self.parse_batch_responses("parse_generate_answer", states, batch_texts)
 
     def parse_batch_score_answers(
-        self,
-        states: List[Dict],
-        batch_texts: List[List[str]]
+        self, states: List[Dict], batch_texts: List[List[str]]
     ) -> Tuple[List[float], List[Optional[Exception]]]:
         """
         Parse multiple score responses in batch.
@@ -217,9 +218,7 @@ class BatchParser(Parser):
         return self.parse_batch_responses("parse_score_answer", states, batch_texts)
 
     def parse_batch_aggregation_answers(
-        self,
-        states: List[Dict],
-        batch_texts: List[List[str]]
+        self, states: List[Dict], batch_texts: List[List[str]]
     ) -> Tuple[List[Union[Dict, List[Dict]]], List[Optional[Exception]]]:
         """
         Parse multiple aggregation responses in batch.
@@ -231,12 +230,12 @@ class BatchParser(Parser):
         :return: Tuple of (list of aggregated states, errors)
         :rtype: Tuple[List[Union[Dict, List[Dict]]], List[Optional[Exception]]]
         """
-        return self.parse_batch_responses("parse_aggregation_answer", states, batch_texts)
+        return self.parse_batch_responses(
+            "parse_aggregation_answer", states, batch_texts
+        )
 
     def parse_batch_improve_answers(
-        self,
-        states: List[Dict],
-        batch_texts: List[List[str]]
+        self, states: List[Dict], batch_texts: List[List[str]]
     ) -> Tuple[List[Dict], List[Optional[Exception]]]:
         """
         Parse multiple improve responses in batch.
@@ -251,9 +250,7 @@ class BatchParser(Parser):
         return self.parse_batch_responses("parse_improve_answer", states, batch_texts)
 
     def parse_batch_validation_answers(
-        self,
-        states: List[Dict],
-        batch_texts: List[List[str]]
+        self, states: List[Dict], batch_texts: List[List[str]]
     ) -> Tuple[List[bool], List[Optional[Exception]]]:
         """
         Parse multiple validation responses in batch.
@@ -265,9 +262,13 @@ class BatchParser(Parser):
         :return: Tuple of (list of validation results, errors)
         :rtype: Tuple[List[bool], List[Optional[Exception]]]
         """
-        return self.parse_batch_responses("parse_validation_answer", states, batch_texts)
+        return self.parse_batch_responses(
+            "parse_validation_answer", states, batch_texts
+        )
 
-    def get_batch_statistics(self, errors: List[Optional[Exception]]) -> Dict[str, Union[int, float]]:
+    def get_batch_statistics(
+        self, errors: List[Optional[Exception]]
+    ) -> Dict[str, Union[int, float]]:
         """
         Get statistics about batch processing results.
 
@@ -285,5 +286,5 @@ class BatchParser(Parser):
             "successful_items": success_count,
             "failed_items": error_count,
             "success_rate": success_count / total_items if total_items > 0 else 0.0,
-            "error_rate": error_count / total_items if total_items > 0 else 0.0
+            "error_rate": error_count / total_items if total_items > 0 else 0.0,
         }

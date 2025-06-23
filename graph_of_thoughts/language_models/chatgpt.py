@@ -6,11 +6,12 @@
 #
 # main author: Nils Blach
 
-import backoff
 import os
 import random
 import time
-from typing import List, Dict, Union
+from typing import Dict, List, Union
+
+import backoff
 from openai import OpenAI, OpenAIError
 from openai.types.chat.chat_completion import ChatCompletion
 

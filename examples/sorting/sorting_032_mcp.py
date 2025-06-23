@@ -11,19 +11,38 @@ Example demonstrating how to use Graph of Thoughts with MCP (Model Context Proto
 This example shows how to connect to MCP hosts like Claude Desktop, VSCode, or Cursor.
 """
 
-import os
-import logging
+import csv
 import datetime
 import json
-import csv
-from typing import Dict, List, Callable, Union
-from graph_of_thoughts import controller, language_models, operations, prompter, parser
+import logging
+import os
+from typing import Callable, Dict, List, Union
+
+from graph_of_thoughts import controller, language_models, operations, parser, prompter
 
 # Import the original sorting example components
 try:
-    from .sorting_032 import SortingPrompter, SortingParser, io, cot, tot, tot2, got, utils
+    from .sorting_032 import (
+        SortingParser,
+        SortingPrompter,
+        cot,
+        got,
+        io,
+        tot,
+        tot2,
+        utils,
+    )
 except ImportError:
-    from sorting_032 import SortingPrompter, SortingParser, io, cot, tot, tot2, got, utils
+    from sorting_032 import (
+        SortingParser,
+        SortingPrompter,
+        cot,
+        got,
+        io,
+        tot,
+        tot2,
+        utils,
+    )
 
 
 def run_mcp(
@@ -105,26 +124,26 @@ def run_mcp(
                     f"Budget has been depleted, stopping. Method {method.__name__} has not been run."
                 )
                 break
-            
+
             # Use MCP language model instead of ChatGPT
             mcp_config_path = os.path.join(
                 os.path.dirname(__file__),
                 "../../graph_of_thoughts/language_models/mcp_config.json",
             )
-            
+
             # Fallback to template if config doesn't exist
             if not os.path.exists(mcp_config_path):
                 mcp_config_path = os.path.join(
                     os.path.dirname(__file__),
                     "../../graph_of_thoughts/language_models/mcp_config_template.json",
                 )
-            
+
             lm = language_models.MCPLanguageModel(
                 mcp_config_path,
                 model_name=mcp_model_name,
                 cache=True,
             )
-            
+
             operations_graph = method()
             executor = controller.Controller(
                 lm,
@@ -159,91 +178,84 @@ def demo_mcp_connection() -> None:
     """
     print("Graph of Thoughts MCP Demo")
     print("=" * 40)
-    
+
     # Test data
     to_be_sorted = "[3, 7, 0, 2, 8, 1, 2, 2, 2, 4, 7, 8, 5, 5, 3, 9]"
-    
+
     print(f"Input to sort: {to_be_sorted}")
     print()
-    
+
     # Available MCP configurations
-    mcp_configs = [
-        "mcp_claude_desktop",
-        "mcp_vscode", 
-        "mcp_cursor",
-        "mcp_http_server"
-    ]
-    
+    mcp_configs = ["mcp_claude_desktop", "mcp_vscode", "mcp_cursor", "mcp_http_server"]
+
     print("Available MCP configurations:")
     for i, config in enumerate(mcp_configs, 1):
         print(f"  {i}. {config}")
     print()
-    
+
     # For demo purposes, we'll use Claude Desktop
     selected_config = "mcp_claude_desktop"
     print(f"Using configuration: {selected_config}")
     print()
-    
+
     try:
         # Create MCP language model
         mcp_config_path = os.path.join(
             os.path.dirname(__file__),
             "../../graph_of_thoughts/language_models/mcp_config_template.json",
         )
-        
+
         lm = language_models.MCPLanguageModel(
             mcp_config_path,
             model_name=selected_config,
             cache=False,
         )
-        
+
         print("MCP Language Model created successfully!")
         print(f"Transport type: {lm.transport_type}")
         print(f"Client info: {lm.client_info}")
         print(f"Capabilities: {lm.capabilities}")
         print("Note: This example uses the new MCP protocol-compliant implementation")
         print()
-        
+
         # Create a simple Graph of Operations for demonstration
         gop = operations.GraphOfOperations()
         gop.append_operation(operations.Generate(1, 1))
         gop.append_operation(operations.Score(1, False, utils.num_errors))
         gop.append_operation(operations.GroundTruth(utils.test_sorting))
-        
+
         # Create the Controller
         ctrl = controller.Controller(
             lm,
             gop,
             SortingPrompter(),
             SortingParser(),
-            {
-                "original": to_be_sorted,
-                "current": "",
-                "method": "io"
-            }
+            {"original": to_be_sorted, "current": "", "method": "io"},
         )
-        
+
         print("Running Graph of Thoughts with MCP...")
         ctrl.run()
-        
+
         print(f"Execution completed!")
         print(f"Estimated cost: ${lm.cost:.4f}")
-        
+
         # Output results
         output_path = "mcp_demo_output.json"
         ctrl.output_graph(output_path)
         print(f"Results saved to: {output_path}")
-        
+
     except Exception as e:
         print(f"Error during MCP demo: {e}")
         print("This is expected if no MCP host is running.")
-        print("To use MCP, ensure you have Claude Desktop, VSCode, or Cursor running with MCP support.")
+        print(
+            "To use MCP, ensure you have Claude Desktop, VSCode, or Cursor running with MCP support."
+        )
 
 
 if __name__ == "__main__":
     """
     MCP version of the sorting example.
-    
+
     Input (x)   : an unordered list of 32 numbers between 0 and 9 (inclusive)
     Output (y)  : a sorted list of 32 numbers between 0 and 9 (inclusive)
     Correct     : y == sorted(x)
@@ -252,14 +264,14 @@ if __name__ == "__main__":
     Output Example:
         [0, 0, 0, 0, 1, 1, 1, 1, 2...]
     """
-    
+
     # Run the demo
     demo_mcp_connection()
-    
+
     # Uncomment the following to run the full experiment with MCP
     # budget = 30
     # samples = [item for item in range(0, 10)]  # Smaller sample for demo
     # approaches = [io, cot]  # Simpler approaches for demo
-    # 
+    #
     # spent = run_mcp(samples, approaches, budget, "mcp_claude_desktop")
     # print(f"Spent {spent} out of {budget} budget using MCP.")

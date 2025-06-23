@@ -7,8 +7,10 @@
 # main author: Ales Kubicek
 
 import os
+from typing import Dict, List, Union
+
 import torch
-from typing import List, Dict, Union
+
 from .abstract_language_model import AbstractLanguageModel
 
 

@@ -9,10 +9,11 @@
 import json
 import logging
 from typing import List
+
 from graph_of_thoughts.language_models import AbstractLanguageModel
 from graph_of_thoughts.operations import GraphOfOperations, Thought
-from graph_of_thoughts.prompter import Prompter
 from graph_of_thoughts.parser import Parser
+from graph_of_thoughts.prompter import Prompter
 
 
 class Controller:

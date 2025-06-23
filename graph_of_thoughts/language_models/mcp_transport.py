@@ -174,14 +174,23 @@ from .mcp_protocol import MCPProtocolValidator, create_sampling_request
 # Import metrics integration
 try:
     from .mcp_metrics import MetricsIntegrationMixin, get_global_metrics_collector
+
     METRICS_AVAILABLE = True
 except ImportError:
     # Fallback if metrics module not available
     class MetricsIntegrationMixin:
-        def set_metrics_collector(self, metrics_collector): pass
-        def record_connection_metric(self, success, duration_ms): pass
-        def record_transport_metric(self, metric_name, value, labels=None): pass
-    def get_global_metrics_collector(): return None
+        def set_metrics_collector(self, metrics_collector):
+            pass
+
+        def record_connection_metric(self, success, duration_ms):
+            pass
+
+        def record_transport_metric(self, metric_name, value, labels=None):
+            pass
+
+    def get_global_metrics_collector():
+        return None
+
     METRICS_AVAILABLE = False
 
 
@@ -214,7 +223,9 @@ class MCPTransport(ABC):
         self._request_id_counter += 1
         return f"req_{self._request_id_counter}_{uuid.uuid4().hex[:8]}"
 
-    def _create_jsonrpc_request(self, method: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _create_jsonrpc_request(
+        self, method: str, params: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Create a JSON-RPC 2.0 request message.
 
@@ -229,10 +240,12 @@ class MCPTransport(ABC):
             "jsonrpc": "2.0",
             "id": self._generate_request_id(),
             "method": method,
-            "params": params
+            "params": params,
         }
 
-    def _create_jsonrpc_notification(self, method: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _create_jsonrpc_notification(
+        self, method: str, params: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Create a JSON-RPC 2.0 notification message.
 
@@ -243,11 +256,7 @@ class MCPTransport(ABC):
         :return: JSON-RPC notification
         :rtype: Dict[str, Any]
         """
-        return {
-            "jsonrpc": "2.0",
-            "method": method,
-            "params": params
-        }
+        return {"jsonrpc": "2.0", "method": method, "params": params}
 
     @abstractmethod
     async def connect(self) -> bool:
@@ -308,7 +317,7 @@ class MCPTransport(ABC):
         init_params = {
             "protocolVersion": "2024-11-05",
             "capabilities": capabilities,
-            "clientInfo": client_info
+            "clientInfo": client_info,
         }
 
         response = await self.send_request("initialize", init_params)
@@ -335,7 +344,12 @@ class MCPTransport(ABC):
         await self.connect()
         return self
 
-    async def __aexit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[Any]) -> None:
+    async def __aexit__(
+        self,
+        exc_type: Optional[type],
+        exc_val: Optional[Exception],
+        exc_tb: Optional[Any],
+    ) -> None:
         """Async context manager exit."""
         await self.disconnect()
 
@@ -392,9 +406,7 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
 
             # Create server parameters for the MCP SDK
             server_params = StdioServerParameters(
-                command=command,
-                args=args,
-                env=env if env else None
+                command=command, args=args, env=env if env else None
             )
 
             # Use the MCP SDK to establish the connection
@@ -404,15 +416,19 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
             try:
                 stdio_transport = await asyncio.wait_for(
                     self.exit_stack.enter_async_context(stdio_client(server_params)),
-                    timeout=self.connection_timeout
+                    timeout=self.connection_timeout,
                 )
                 self.read_stream, self.write_stream = stdio_transport
             except asyncio.TimeoutError:
-                raise MCPTimeoutError(f"Connection timeout after {self.connection_timeout}s")
+                raise MCPTimeoutError(
+                    f"Connection timeout after {self.connection_timeout}s"
+                )
             except FileNotFoundError as e:
                 raise MCPConnectionError(f"MCP server command not found: {command}", e)
             except PermissionError as e:
-                raise MCPConnectionError(f"Permission denied executing MCP server: {command}", e)
+                raise MCPConnectionError(
+                    f"Permission denied executing MCP server: {command}", e
+                )
 
             # Create the MCP session
             try:
@@ -420,19 +436,22 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
                     self.exit_stack.enter_async_context(
                         ClientSession(self.read_stream, self.write_stream)
                     ),
-                    timeout=self.connection_timeout
+                    timeout=self.connection_timeout,
                 )
             except asyncio.TimeoutError:
-                raise MCPTimeoutError(f"Session creation timeout after {self.connection_timeout}s")
+                raise MCPTimeoutError(
+                    f"Session creation timeout after {self.connection_timeout}s"
+                )
 
             # Initialize the MCP session
             try:
                 await asyncio.wait_for(
-                    self.session.initialize(),
-                    timeout=self.connection_timeout
+                    self.session.initialize(), timeout=self.connection_timeout
                 )
             except asyncio.TimeoutError:
-                raise MCPTimeoutError(f"Session initialization timeout after {self.connection_timeout}s")
+                raise MCPTimeoutError(
+                    f"Session initialization timeout after {self.connection_timeout}s"
+                )
             except Exception as e:
                 raise MCPProtocolError(f"Failed to initialize MCP session: {e}", e)
 
@@ -447,7 +466,9 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
                 try:
                     await self.exit_stack.aclose()
                 except Exception as cleanup_error:
-                    self.logger.warning(f"Error during connection cleanup: {cleanup_error}")
+                    self.logger.warning(
+                        f"Error during connection cleanup: {cleanup_error}"
+                    )
             raise
         except Exception as e:
             # Handle unexpected errors
@@ -456,7 +477,9 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
                 try:
                     await self.exit_stack.aclose()
                 except Exception as cleanup_error:
-                    self.logger.warning(f"Error during connection cleanup: {cleanup_error}")
+                    self.logger.warning(
+                        f"Error during connection cleanup: {cleanup_error}"
+                    )
             raise MCPConnectionError(f"Failed to connect via stdio: {e}", e)
         finally:
             # Record connection metrics
@@ -505,8 +528,7 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
                 # Create the MCP request
                 try:
                     request = mcp_types.CreateMessageRequest(
-                        method="sampling/createMessage",
-                        params=request_params
+                        method="sampling/createMessage", params=request_params
                     )
                 except Exception as e:
                     raise MCPProtocolError(f"Failed to create MCP request: {e}", e)
@@ -514,18 +536,24 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
                 # Send the request using the MCP session with timeout
                 try:
                     result = await asyncio.wait_for(
-                        self.session.send_request(request, mcp_types.CreateMessageResult),
-                        timeout=self.request_timeout
+                        self.session.send_request(
+                            request, mcp_types.CreateMessageResult
+                        ),
+                        timeout=self.request_timeout,
                     )
                 except asyncio.TimeoutError:
-                    raise MCPTimeoutError(f"Request timeout after {self.request_timeout}s")
+                    raise MCPTimeoutError(
+                        f"Request timeout after {self.request_timeout}s"
+                    )
                 except Exception as e:
                     # Check if this is a server error response
-                    if hasattr(e, 'error') and isinstance(e.error, dict):
-                        error_code = e.error.get('code', 'unknown')
-                        error_message = e.error.get('message', str(e))
-                        error_data = e.error.get('data')
-                        raise MCPServerError(f"Server error: {error_message}", error_code, error_data)
+                    if hasattr(e, "error") and isinstance(e.error, dict):
+                        error_code = e.error.get("code", "unknown")
+                        error_message = e.error.get("message", str(e))
+                        error_data = e.error.get("data")
+                        raise MCPServerError(
+                            f"Server error: {error_message}", error_code, error_data
+                        )
                     raise MCPProtocolError(f"Failed to send sampling request: {e}", e)
 
                 # Convert the result back to our expected format
@@ -536,26 +564,33 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
             else:
                 # Handle other MCP methods using generic request
                 try:
-                    request = mcp_types.Request(
-                        method=method,
-                        params=params
-                    )
+                    request = mcp_types.Request(method=method, params=params)
                 except Exception as e:
-                    raise MCPProtocolError(f"Failed to create generic MCP request: {e}", e)
+                    raise MCPProtocolError(
+                        f"Failed to create generic MCP request: {e}", e
+                    )
 
                 # Send generic request with timeout
                 try:
                     result = await asyncio.wait_for(
                         self.session.send_request(request, dict),
-                        timeout=self.request_timeout
+                        timeout=self.request_timeout,
                     )
                     return result
                 except asyncio.TimeoutError:
-                    raise MCPTimeoutError(f"Request timeout after {self.request_timeout}s")
+                    raise MCPTimeoutError(
+                        f"Request timeout after {self.request_timeout}s"
+                    )
                 except Exception as e:
                     raise MCPProtocolError(f"Failed to send generic request: {e}", e)
 
-        except (MCPTimeoutError, MCPConnectionError, MCPProtocolError, MCPValidationError, MCPServerError):
+        except (
+            MCPTimeoutError,
+            MCPConnectionError,
+            MCPProtocolError,
+            MCPValidationError,
+            MCPServerError,
+        ):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
@@ -563,7 +598,9 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
             self.logger.error(f"Unexpected error sending request: {e}")
             raise MCPTransportError(f"Failed to send request: {e}", e)
 
-    def _convert_to_mcp_sampling_params(self, params: Dict[str, Any]) -> mcp_types.CreateMessageRequestParams:
+    def _convert_to_mcp_sampling_params(
+        self, params: Dict[str, Any]
+    ) -> mcp_types.CreateMessageRequestParams:
         """
         Convert our internal sampling parameters to MCP CreateMessageRequestParams.
 
@@ -581,10 +618,7 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
             # Currently only text content is supported in this implementation
             # Future versions could add support for image, audio, etc.
             if content["type"] == "text":
-                mcp_content = mcp_types.TextContent(
-                    type="text",
-                    text=content["text"]
-                )
+                mcp_content = mcp_types.TextContent(type="text", text=content["text"])
             else:
                 # Raise error for unsupported content types to fail fast
                 # This helps identify when new content types need to be implemented
@@ -592,8 +626,7 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
 
             # Create MCP-compliant message structure
             mcp_message = mcp_types.SamplingMessage(
-                role=msg["role"],  # Must be "user" or "assistant"
-                content=mcp_content
+                role=msg["role"], content=mcp_content  # Must be "user" or "assistant"
             )
             messages.append(mcp_message)
 
@@ -607,15 +640,19 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
             hints = None
             if "hints" in prefs:
                 # Each hint specifies a preferred model by name
-                hints = [mcp_types.ModelHint(name=hint["name"]) for hint in prefs["hints"]]
+                hints = [
+                    mcp_types.ModelHint(name=hint["name"]) for hint in prefs["hints"]
+                ]
 
             # Create model preferences with priority weights (0.0 to 1.0)
             # These help the MCP host choose the best model for the request
             model_preferences = mcp_types.ModelPreferences(
                 hints=hints,
-                costPriority=prefs.get("costPriority"),        # Lower cost preference
-                speedPriority=prefs.get("speedPriority"),      # Faster response preference
-                intelligencePriority=prefs.get("intelligencePriority")  # Higher capability preference
+                costPriority=prefs.get("costPriority"),  # Lower cost preference
+                speedPriority=prefs.get("speedPriority"),  # Faster response preference
+                intelligencePriority=prefs.get(
+                    "intelligencePriority"
+                ),  # Higher capability preference
             )
 
         return mcp_types.CreateMessageRequestParams(
@@ -626,10 +663,12 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
             temperature=params.get("temperature"),
             maxTokens=params.get("maxTokens", 1000),
             stopSequences=params.get("stopSequences"),
-            metadata=params.get("metadata")
+            metadata=params.get("metadata"),
         )
 
-    def _convert_from_mcp_result(self, result: mcp_types.CreateMessageResult) -> Dict[str, Any]:
+    def _convert_from_mcp_result(
+        self, result: mcp_types.CreateMessageResult
+    ) -> Dict[str, Any]:
         """
         Convert MCP CreateMessageResult to our internal format.
 
@@ -640,23 +679,20 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
         """
         # Convert content back to our format
         content = result.content
-        if hasattr(content, 'type') and content.type == "text":
-            content_dict = {
-                "type": "text",
-                "text": content.text
-            }
+        if hasattr(content, "type") and content.type == "text":
+            content_dict = {"type": "text", "text": content.text}
         else:
             # Handle other content types
             content_dict = {
-                "type": getattr(content, 'type', 'unknown'),
-                "text": str(content)
+                "type": getattr(content, "type", "unknown"),
+                "text": str(content),
             }
 
         return {
             "role": result.role,
             "content": content_dict,
             "model": result.model,
-            "stopReason": result.stopReason
+            "stopReason": result.stopReason,
         }
 
     async def send_notification(self, method: str, params: Dict[str, Any]) -> None:
@@ -675,10 +711,7 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
             self.logger.debug(f"Sending MCP notification: {method}")
 
             # Create a notification using the MCP session
-            notification = mcp_types.Notification(
-                method=method,
-                params=params
-            )
+            notification = mcp_types.Notification(method=method, params=params)
 
             await self.session.send_notification(notification)
 
@@ -723,7 +756,9 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
         # Connection pooling configuration
         pool_config = connection_config.get("connection_pool", {})
         self.max_connections = pool_config.get("max_connections", 20)
-        self.max_keepalive_connections = pool_config.get("max_keepalive_connections", 10)
+        self.max_keepalive_connections = pool_config.get(
+            "max_keepalive_connections", 10
+        )
         self.keepalive_expiry = pool_config.get("keepalive_expiry", 30.0)
         self.enable_http2 = pool_config.get("enable_http2", False)
         self.retries = pool_config.get("retries", 3)
@@ -745,7 +780,7 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
             # Set up default headers for MCP
             default_headers = {
                 "Content-Type": "application/json",
-                "Accept": "application/json, text/event-stream"
+                "Accept": "application/json, text/event-stream",
             }
             default_headers.update(self.headers)
 
@@ -755,7 +790,7 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
                 limits = httpx.Limits(
                     max_connections=self.max_connections,
                     max_keepalive_connections=self.max_keepalive_connections,
-                    keepalive_expiry=self.keepalive_expiry
+                    keepalive_expiry=self.keepalive_expiry,
                 )
 
                 # Configure timeout settings
@@ -763,7 +798,7 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
                     connect=self.connection_timeout,
                     read=self.request_timeout,
                     write=self.request_timeout,
-                    pool=self.connection_timeout
+                    pool=self.connection_timeout,
                 )
 
                 # Create client with pooling and keep-alive
@@ -773,7 +808,7 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
                     limits=limits,
                     http2=self.enable_http2,
                     follow_redirects=True,
-                    max_redirects=3
+                    max_redirects=3,
                 )
 
                 self.logger.debug(
@@ -789,15 +824,21 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
             # Send initialization request with timeout
             try:
                 init_response = await asyncio.wait_for(
-                    self.initialize(),
-                    timeout=self.connection_timeout
+                    self.initialize(), timeout=self.connection_timeout
                 )
             except asyncio.TimeoutError:
-                raise MCPTimeoutError(f"Initialization timeout after {self.connection_timeout}s")
+                raise MCPTimeoutError(
+                    f"Initialization timeout after {self.connection_timeout}s"
+                )
             except httpx.ConnectError as e:
-                raise MCPConnectionError(f"Failed to connect to {self.server_url}: {e}", e)
+                raise MCPConnectionError(
+                    f"Failed to connect to {self.server_url}: {e}", e
+                )
             except httpx.HTTPStatusError as e:
-                raise MCPServerError(f"HTTP error during initialization: {e.response.status_code}", str(e.response.status_code))
+                raise MCPServerError(
+                    f"HTTP error during initialization: {e.response.status_code}",
+                    str(e.response.status_code),
+                )
             except Exception as e:
                 raise MCPProtocolError(f"Failed to initialize MCP connection: {e}", e)
 
@@ -817,7 +858,9 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
                 try:
                     await self.client.aclose()
                 except Exception as cleanup_error:
-                    self.logger.warning(f"Error during HTTP client cleanup: {cleanup_error}")
+                    self.logger.warning(
+                        f"Error during HTTP client cleanup: {cleanup_error}"
+                    )
                 self.client = None
             raise
         except Exception as e:
@@ -827,7 +870,9 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
                 try:
                     await self.client.aclose()
                 except Exception as cleanup_error:
-                    self.logger.warning(f"Error during HTTP client cleanup: {cleanup_error}")
+                    self.logger.warning(
+                        f"Error during HTTP client cleanup: {cleanup_error}"
+                    )
                 self.client = None
             raise MCPConnectionError(f"Failed to connect via HTTP: {e}", e)
         finally:
@@ -848,8 +893,7 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
             if self.session_management and self.session_id and self.client:
                 try:
                     await self.client.delete(
-                        self.server_url,
-                        headers={"Mcp-Session-Id": self.session_id}
+                        self.server_url, headers={"Mcp-Session-Id": self.session_id}
                     )
                 except:
                     pass  # Ignore errors during session cleanup
@@ -873,12 +917,16 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
         try:
             # Get connection pool info from httpx client
             pool_info = {}
-            if hasattr(self.client, '_transport') and hasattr(self.client._transport, '_pool'):
+            if hasattr(self.client, "_transport") and hasattr(
+                self.client._transport, "_pool"
+            ):
                 pool = self.client._transport._pool
-                if hasattr(pool, '_connections'):
-                    pool_info['active_connections'] = len(pool._connections)
-                if hasattr(pool, '_keepalive_connections'):
-                    pool_info['keepalive_connections'] = len(pool._keepalive_connections)
+                if hasattr(pool, "_connections"):
+                    pool_info["active_connections"] = len(pool._connections)
+                if hasattr(pool, "_keepalive_connections"):
+                    pool_info["keepalive_connections"] = len(
+                        pool._keepalive_connections
+                    )
 
             if pool_info:
                 self.logger.debug(f"Connection pool stats: {pool_info}")
@@ -904,17 +952,19 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
             "max_keepalive_connections": self.max_keepalive_connections,
             "keepalive_expiry": self.keepalive_expiry,
             "http2_enabled": self.enable_http2,
-            "server_url": self.server_url
+            "server_url": self.server_url,
         }
 
         # Try to get actual pool statistics
         try:
-            if hasattr(self.client, '_transport') and hasattr(self.client._transport, '_pool'):
+            if hasattr(self.client, "_transport") and hasattr(
+                self.client._transport, "_pool"
+            ):
                 pool = self.client._transport._pool
-                if hasattr(pool, '_connections'):
-                    info['active_connections'] = len(pool._connections)
-                if hasattr(pool, '_keepalive_connections'):
-                    info['keepalive_connections'] = len(pool._keepalive_connections)
+                if hasattr(pool, "_connections"):
+                    info["active_connections"] = len(pool._connections)
+                if hasattr(pool, "_keepalive_connections"):
+                    info["keepalive_connections"] = len(pool._keepalive_connections)
         except Exception:
             pass  # Pool stats not available
 
@@ -949,18 +999,20 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
             try:
                 response = await asyncio.wait_for(
                     self.client.post(
-                        self.server_url,
-                        json=jsonrpc_request,
-                        headers=headers
+                        self.server_url, json=jsonrpc_request, headers=headers
                     ),
-                    timeout=self.request_timeout
+                    timeout=self.request_timeout,
                 )
             except asyncio.TimeoutError:
-                raise MCPTimeoutError(f"HTTP request timeout after {self.request_timeout}s")
+                raise MCPTimeoutError(
+                    f"HTTP request timeout after {self.request_timeout}s"
+                )
             except httpx.ConnectError as e:
                 raise MCPConnectionError(f"Connection error: {e}", e)
             except httpx.HTTPStatusError as e:
-                raise MCPServerError(f"HTTP error: {e.response.status_code}", str(e.response.status_code))
+                raise MCPServerError(
+                    f"HTTP error: {e.response.status_code}", str(e.response.status_code)
+                )
 
             # Handle response based on status code
             if response.status_code == 200:
@@ -981,14 +1033,28 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
                             try:
                                 return self._convert_http_sampling_response(result)
                             except Exception as e:
-                                raise MCPProtocolError(f"Failed to convert sampling response: {e}", e)
+                                raise MCPProtocolError(
+                                    f"Failed to convert sampling response: {e}", e
+                                )
                         return result
                     elif "error" in json_response:
                         error = json_response["error"]
-                        error_code = error.get("code", "unknown") if isinstance(error, dict) else "unknown"
-                        error_message = error.get("message", str(error)) if isinstance(error, dict) else str(error)
-                        error_data = error.get("data") if isinstance(error, dict) else None
-                        raise MCPServerError(f"MCP server error: {error_message}", error_code, error_data)
+                        error_code = (
+                            error.get("code", "unknown")
+                            if isinstance(error, dict)
+                            else "unknown"
+                        )
+                        error_message = (
+                            error.get("message", str(error))
+                            if isinstance(error, dict)
+                            else str(error)
+                        )
+                        error_data = (
+                            error.get("data") if isinstance(error, dict) else None
+                        )
+                        raise MCPServerError(
+                            f"MCP server error: {error_message}", error_code, error_data
+                        )
                     else:
                         return json_response
 
@@ -996,9 +1062,9 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
                     # SSE stream response - handle the first event
                     # In a full implementation, you'd handle the entire stream
                     try:
-                        lines = response.text.split('\n')
+                        lines = response.text.split("\n")
                         for line in lines:
-                            if line.startswith('data: '):
+                            if line.startswith("data: "):
                                 data = line[6:]  # Remove 'data: ' prefix
                                 if data.strip():
                                     return json.loads(data)
@@ -1016,11 +1082,22 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
             elif response.status_code == 404:
                 raise MCPConnectionError(f"MCP endpoint not found: {self.server_url}")
             elif response.status_code >= 500:
-                raise MCPServerError(f"Server error: {response.status_code}", str(response.status_code))
+                raise MCPServerError(
+                    f"Server error: {response.status_code}", str(response.status_code)
+                )
             else:
-                raise MCPServerError(f"HTTP request failed: {response.status_code}", str(response.status_code))
+                raise MCPServerError(
+                    f"HTTP request failed: {response.status_code}",
+                    str(response.status_code),
+                )
 
-        except (MCPTimeoutError, MCPConnectionError, MCPProtocolError, MCPValidationError, MCPServerError):
+        except (
+            MCPTimeoutError,
+            MCPConnectionError,
+            MCPProtocolError,
+            MCPValidationError,
+            MCPServerError,
+        ):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
@@ -1043,7 +1120,7 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
             "role": result.get("role", "assistant"),
             "content": result.get("content", {"type": "text", "text": ""}),
             "model": result.get("model", "unknown"),
-            "stopReason": result.get("stopReason", "endTurn")
+            "stopReason": result.get("stopReason", "endTurn"),
         }
 
     async def send_notification(self, method: str, params: Dict[str, Any]) -> None:
@@ -1071,9 +1148,7 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
 
             # Send POST request
             await self.client.post(
-                self.server_url,
-                json=jsonrpc_notification,
-                headers=headers
+                self.server_url, json=jsonrpc_notification, headers=headers
             )
 
         except Exception as e:
@@ -1154,29 +1229,41 @@ def create_transport(config: Dict[str, Any]) -> MCPTransport:
 
 class MCPTransportError(Exception):
     """Exception raised for MCP transport-related errors."""
-    def __init__(self, message: str, original_error: Optional[Exception] = None) -> None:
+
+    def __init__(
+        self, message: str, original_error: Optional[Exception] = None
+    ) -> None:
         super().__init__(message)
         self.original_error = original_error
 
 
 class MCPConnectionError(MCPTransportError):
     """Exception raised for MCP connection errors."""
+
     pass
 
 
 class MCPTimeoutError(MCPTransportError):
     """Exception raised for MCP timeout errors."""
+
     pass
 
 
 class MCPProtocolError(MCPTransportError):
     """Exception raised for MCP protocol errors."""
+
     pass
 
 
 class MCPServerError(MCPTransportError):
     """Exception raised for MCP server-side errors."""
-    def __init__(self, message: str, error_code: Optional[str] = None, error_data: Optional[dict] = None) -> None:
+
+    def __init__(
+        self,
+        message: str,
+        error_code: Optional[str] = None,
+        error_data: Optional[dict] = None,
+    ) -> None:
         super().__init__(message)
         self.error_code = error_code
         self.error_data = error_data
@@ -1184,4 +1271,5 @@ class MCPServerError(MCPTransportError):
 
 class MCPValidationError(MCPTransportError):
     """Exception raised for MCP message validation errors."""
+
     pass
