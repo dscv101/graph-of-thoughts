@@ -1,0 +1,237 @@
+{
+  "server": {
+    "name": "graph-of-thoughts",
+    "version": "0.0.3",
+    "description": "Graph of Thoughts MCP Server for advanced reasoning workflows",
+    "author": "ETH Zurich",
+    "license": "BSD-3-Clause"
+  },
+  "capabilities": {
+    "tools": {
+      "listChanged": true
+    },
+    "resources": {
+      "subscribe": true,
+      "listChanged": true
+    },
+    "prompts": {
+      "listChanged": true
+    }
+  },
+  "transport": {
+    "stdio": {
+      "enabled": true,
+      "description": "Standard input/output transport for local MCP hosts"
+    },
+    "http": {
+      "enabled": false,
+      "host": "localhost",
+      "port": 8080,
+      "description": "HTTP transport for remote MCP clients"
+    }
+  },
+  "tools": {
+    "break_down_task": {
+      "description": "Decompose complex tasks into manageable subtasks",
+      "category": "decomposition",
+      "complexity": "medium",
+      "examples": [
+        {
+          "input": {
+            "task": "Build a web application for task management",
+            "domain": "programming"
+          },
+          "output": "Subtasks: 1. Design database schema, 2. Create API endpoints, 3. Build frontend interface, 4. Implement authentication, 5. Add testing"
+        }
+      ]
+    },
+    "generate_thoughts": {
+      "description": "Generate multiple thought approaches for problem solving",
+      "category": "generation",
+      "complexity": "medium",
+      "examples": [
+        {
+          "input": {
+            "problem": "Optimize database query performance",
+            "num_thoughts": 3,
+            "approach_type": "analytical"
+          },
+          "output": "Three analytical approaches: indexing optimization, query restructuring, and caching strategies"
+        }
+      ]
+    },
+    "score_thoughts": {
+      "description": "Evaluate and score different thought approaches",
+      "category": "evaluation",
+      "complexity": "medium",
+      "examples": [
+        {
+          "input": {
+            "thoughts": ["Use binary search", "Use linear search", "Use hash table"],
+            "criteria": "time complexity and space efficiency"
+          },
+          "output": "Ranked approaches with scores based on algorithmic efficiency"
+        }
+      ]
+    },
+    "validate_and_improve": {
+      "description": "Validate solutions and improve them iteratively",
+      "category": "validation",
+      "complexity": "high",
+      "examples": [
+        {
+          "input": {
+            "solution": "Sort array using bubble sort",
+            "validation_criteria": "efficiency and correctness"
+          },
+          "output": "Improved solution using quicksort with better time complexity"
+        }
+      ]
+    },
+    "aggregate_results": {
+      "description": "Combine multiple results into a comprehensive solution",
+      "category": "aggregation",
+      "complexity": "high",
+      "examples": [
+        {
+          "input": {
+            "results": ["Solution A: Fast but memory-intensive", "Solution B: Slow but memory-efficient"],
+            "aggregation_method": "synthesis"
+          },
+          "output": "Hybrid solution balancing speed and memory usage"
+        }
+      ]
+    },
+    "create_reasoning_chain": {
+      "description": "Build complete reasoning workflows with multiple operations",
+      "category": "workflow",
+      "complexity": "high",
+      "examples": [
+        {
+          "input": {
+            "problem": "Design a recommendation system",
+            "workflow_type": "generate_score_select"
+          },
+          "output": "Complete workflow: generate approaches → score feasibility → select best → implement"
+        }
+      ]
+    }
+  },
+  "resources": {
+    "got://operations/results": {
+      "description": "Access to operation execution results and history",
+      "type": "dynamic",
+      "format": "json"
+    },
+    "got://templates/prompts": {
+      "description": "Reusable prompt templates for different domains",
+      "type": "static",
+      "format": "json"
+    },
+    "got://configs/examples": {
+      "description": "Example configurations and workflow patterns",
+      "type": "static",
+      "format": "json"
+    },
+    "got://logs/execution": {
+      "description": "Execution logs and debugging information",
+      "type": "dynamic",
+      "format": "text"
+    }
+  },
+  "prompts": {
+    "analyze-problem": {
+      "description": "Structured problem analysis using Graph of Thoughts methodology",
+      "category": "analysis",
+      "use_cases": ["complex problem solving", "systematic analysis", "decision making"]
+    },
+    "generate-solutions": {
+      "description": "Generate multiple solution approaches with different perspectives",
+      "category": "generation",
+      "use_cases": ["brainstorming", "solution exploration", "creative problem solving"]
+    },
+    "evaluate-options": {
+      "description": "Systematic evaluation of different solution options",
+      "category": "evaluation",
+      "use_cases": ["decision making", "option comparison", "risk assessment"]
+    }
+  },
+  "integration": {
+    "claude_desktop": {
+      "config_example": {
+        "mcpServers": {
+          "graph-of-thoughts": {
+            "command": "python",
+            "args": ["-m", "graph_of_thoughts"],
+            "env": {},
+            "autoApprove": [
+              "break_down_task",
+              "generate_thoughts",
+              "score_thoughts",
+              "validate_and_improve",
+              "aggregate_results",
+              "create_reasoning_chain"
+            ]
+          }
+        }
+      }
+    },
+    "vscode": {
+      "config_example": {
+        "mcp.servers": {
+          "graph-of-thoughts": {
+            "command": "python",
+            "args": ["-m", "graph_of_thoughts"],
+            "cwd": "${workspaceFolder}",
+            "autoApprove": [
+              "break_down_task",
+              "generate_thoughts",
+              "score_thoughts",
+              "validate_and_improve",
+              "aggregate_results",
+              "create_reasoning_chain"
+            ]
+          }
+        }
+      }
+    },
+    "cursor": {
+      "config_example": {
+        "mcp": {
+          "servers": {
+            "graph-of-thoughts": {
+              "command": "python -m graph_of_thoughts",
+              "autoApprove": [
+                "break_down_task",
+                "generate_thoughts",
+                "score_thoughts",
+                "validate_and_improve",
+                "aggregate_results",
+                "create_reasoning_chain"
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "handlers": ["console"]
+  },
+  "performance": {
+    "max_concurrent_operations": 10,
+    "operation_timeout": 300,
+    "result_cache_size": 100,
+    "result_cache_ttl": 3600
+  },
+  "security": {
+    "input_validation": true,
+    "output_sanitization": true,
+    "rate_limiting": {
+      "enabled": false,
+      "requests_per_minute": 60
+    }
+  }
+}

@@ -13,6 +13,14 @@
         "capabilities": {
             "sampling": {}
         },
+        "autoApprove": [
+            "break_down_task",
+            "generate_thoughts",
+            "score_thoughts",
+            "validate_and_improve",
+            "aggregate_results",
+            "create_reasoning_chain"
+        ],
         "default_sampling_params": {
             "modelPreferences": {
                 "hints": [
@@ -229,6 +237,14 @@
         "capabilities": {
             "sampling": {}
         },
+        "autoApprove": [
+            "break_down_task",
+            "generate_thoughts",
+            "score_thoughts",
+            "validate_and_improve",
+            "aggregate_results",
+            "create_reasoning_chain"
+        ],
         "default_sampling_params": {
             "modelPreferences": {
                 "hints": [

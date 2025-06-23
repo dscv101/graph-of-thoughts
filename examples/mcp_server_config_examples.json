@@ -1,0 +1,245 @@
+{
+  "claude_desktop_config": {
+    "description": "Configuration for Claude Desktop to use Graph of Thoughts MCP Server",
+    "file_location": "~/Library/Application Support/Claude/claude_desktop_config.json",
+    "config": {
+      "mcpServers": {
+        "graph-of-thoughts": {
+          "command": "python",
+          "args": ["-m", "graph_of_thoughts"],
+          "env": {
+            "PYTHONPATH": "/path/to/graph-of-thoughts"
+          },
+          "autoApprove": [
+            "break_down_task",
+            "generate_thoughts",
+            "score_thoughts",
+            "validate_and_improve",
+            "aggregate_results",
+            "create_reasoning_chain"
+          ]
+        }
+      }
+    }
+  },
+  "vscode_config": {
+    "description": "Configuration for VSCode with MCP extension",
+    "file_location": ".vscode/settings.json",
+    "config": {
+      "mcp.servers": {
+        "graph-of-thoughts": {
+          "command": "python",
+          "args": ["-m", "graph_of_thoughts"],
+          "cwd": "${workspaceFolder}",
+          "env": {
+            "PYTHONPATH": "${workspaceFolder}"
+          },
+          "autoApprove": [
+            "break_down_task",
+            "generate_thoughts",
+            "score_thoughts",
+            "validate_and_improve",
+            "aggregate_results",
+            "create_reasoning_chain"
+          ]
+        }
+      }
+    }
+  },
+  "cursor_config": {
+    "description": "Configuration for Cursor with MCP support",
+    "file_location": ".cursor/config.json",
+    "config": {
+      "mcp": {
+        "servers": {
+          "graph-of-thoughts": {
+            "command": "python -m graph_of_thoughts",
+            "env": {
+              "PYTHONPATH": "/path/to/graph-of-thoughts"
+            },
+            "autoApprove": [
+              "break_down_task",
+              "generate_thoughts",
+              "score_thoughts",
+              "validate_and_improve",
+              "aggregate_results",
+              "create_reasoning_chain"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "usage_examples": {
+    "basic_task_breakdown": {
+      "description": "Break down a complex programming task",
+      "tool": "break_down_task",
+      "input": {
+        "task": "Build a web application for project management",
+        "domain": "programming",
+        "max_subtasks": 5
+      },
+      "expected_output": "List of 5 subtasks including database design, API development, frontend implementation, authentication, and testing"
+    },
+    "algorithm_comparison": {
+      "description": "Generate and compare different algorithmic approaches",
+      "workflow": [
+        {
+          "step": 1,
+          "tool": "generate_thoughts",
+          "input": {
+            "problem": "Sort a large dataset efficiently",
+            "num_thoughts": 3,
+            "approach_type": "analytical"
+          }
+        },
+        {
+          "step": 2,
+          "tool": "score_thoughts",
+          "input": {
+            "thoughts": ["Use quicksort", "Use mergesort", "Use heapsort"],
+            "criteria": "time complexity and space efficiency"
+          }
+        }
+      ]
+    },
+    "solution_improvement": {
+      "description": "Iteratively improve a solution",
+      "tool": "validate_and_improve",
+      "input": {
+        "solution": "Use bubble sort to sort the array",
+        "validation_criteria": "time complexity and practical efficiency",
+        "max_iterations": 3
+      },
+      "expected_output": "Improved solution suggesting more efficient sorting algorithms"
+    },
+    "complete_reasoning_chain": {
+      "description": "Run a complete reasoning workflow",
+      "tool": "create_reasoning_chain",
+      "input": {
+        "problem": "Design a caching strategy for a web application",
+        "workflow_type": "generate_score_select",
+        "num_branches": 3
+      },
+      "expected_output": "Complete workflow with generated approaches, scoring, and final selection"
+    }
+  },
+  "prompt_examples": {
+    "analyze_problem": {
+      "description": "Use the analyze-problem prompt for structured analysis",
+      "prompt": "analyze-problem",
+      "arguments": {
+        "problem": "Our web application is experiencing slow response times",
+        "domain": "performance optimization"
+      },
+      "expected_output": "Structured analysis with problem decomposition, multiple solution approaches, evaluation criteria, and recommended solution path"
+    },
+    "generate_solutions": {
+      "description": "Generate multiple solution approaches",
+      "prompt": "generate-solutions",
+      "arguments": {
+        "problem": "Reduce database query response time",
+        "num_approaches": "4"
+      },
+      "expected_output": "Four different approaches including indexing, query optimization, caching, and database scaling"
+    },
+    "evaluate_options": {
+      "description": "Systematically evaluate different options",
+      "prompt": "evaluate-options",
+      "arguments": {
+        "options": "Option A: Microservices architecture, Option B: Monolithic architecture, Option C: Serverless architecture",
+        "criteria": "scalability, maintainability, and cost"
+      },
+      "expected_output": "Detailed evaluation of each architecture option with pros, cons, scoring, and final recommendation"
+    }
+  },
+  "resource_access_examples": {
+    "view_operation_results": {
+      "description": "Access results from previous operations",
+      "resource": "got://operations/results",
+      "usage": "View JSON data containing all operation execution results with timestamps and operation IDs"
+    },
+    "get_prompt_templates": {
+      "description": "Access reusable prompt templates",
+      "resource": "got://templates/prompts",
+      "usage": "Get JSON object with prompt templates for different problem domains"
+    },
+    "view_example_configs": {
+      "description": "Access example configurations and workflows",
+      "resource": "got://configs/examples",
+      "usage": "Get example workflow patterns and configuration examples"
+    },
+    "check_execution_logs": {
+      "description": "View execution logs for debugging",
+      "resource": "got://logs/execution",
+      "usage": "Get plain text logs with timestamps for all operations"
+    }
+  },
+  "troubleshooting": {
+    "server_wont_start": {
+      "problem": "MCP server fails to start",
+      "solutions": [
+        "Check Python version (3.8+ required)",
+        "Verify graph_of_thoughts package is installed: pip install graph_of_thoughts",
+        "Test import: python -c 'import graph_of_thoughts'",
+        "Check for missing dependencies: pip install mcp"
+      ]
+    },
+    "connection_issues": {
+      "problem": "MCP host cannot connect to server",
+      "solutions": [
+        "Verify command path in MCP host configuration",
+        "Test server startup: python -m graph_of_thoughts --info",
+        "Check environment variables and PYTHONPATH",
+        "Review MCP host logs for error messages"
+      ]
+    },
+    "performance_issues": {
+      "problem": "Server responds slowly",
+      "solutions": [
+        "Reduce num_thoughts and num_branches parameters",
+        "Check system memory and CPU usage",
+        "Enable debug logging: python -m graph_of_thoughts --debug",
+        "Monitor operation execution times"
+      ]
+    },
+    "tool_errors": {
+      "problem": "Tools return error messages",
+      "solutions": [
+        "Validate input parameters match tool schema",
+        "Check for required parameters",
+        "Verify parameter types (string, integer, array)",
+        "Review error messages for specific issues"
+      ]
+    }
+  },
+  "best_practices": {
+    "parameter_optimization": {
+      "description": "Optimize parameters for better performance",
+      "recommendations": [
+        "Start with smaller num_thoughts (2-3) for faster responses",
+        "Use specific domains for better task breakdown",
+        "Limit max_subtasks to 5-7 for manageable complexity",
+        "Choose appropriate workflow_type for your use case"
+      ]
+    },
+    "workflow_design": {
+      "description": "Design effective reasoning workflows",
+      "recommendations": [
+        "Use break_down_task for complex problems first",
+        "Generate multiple approaches before scoring",
+        "Validate and improve solutions iteratively",
+        "Aggregate results when combining multiple solutions"
+      ]
+    },
+    "resource_management": {
+      "description": "Manage server resources effectively",
+      "recommendations": [
+        "Monitor execution_results size for memory usage",
+        "Use operation IDs to track related operations",
+        "Clear old results periodically if needed",
+        "Use appropriate batch sizes for concurrent operations"
+      ]
+    }
+  }
+}

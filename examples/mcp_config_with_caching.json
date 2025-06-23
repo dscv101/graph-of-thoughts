@@ -13,6 +13,14 @@
         "capabilities": {
             "sampling": {}
         },
+        "autoApprove": [
+            "break_down_task",
+            "generate_thoughts",
+            "score_thoughts",
+            "validate_and_improve",
+            "aggregate_results",
+            "create_reasoning_chain"
+        ],
         "default_sampling_params": {
             "temperature": 1.0,
             "maxTokens": 4096,
@@ -67,6 +75,14 @@
         "capabilities": {
             "sampling": {}
         },
+        "autoApprove": [
+            "break_down_task",
+            "generate_thoughts",
+            "score_thoughts",
+            "validate_and_improve",
+            "aggregate_results",
+            "create_reasoning_chain"
+        ],
         "default_sampling_params": {
             "temperature": 0.7,
             "maxTokens": 2048,
@@ -107,6 +123,14 @@
         "capabilities": {
             "sampling": {}
         },
+        "autoApprove": [
+            "break_down_task",
+            "generate_thoughts",
+            "score_thoughts",
+            "validate_and_improve",
+            "aggregate_results",
+            "create_reasoning_chain"
+        ],
         "default_sampling_params": {
             "temperature": 0.8,
             "maxTokens": 8192,

@@ -88,11 +88,13 @@ class MCPTestRunner:
         # Test modules to discover
         self.test_modules = [
             "test_mcp_transport",
-            "test_mcp_client", 
+            "test_mcp_client",
             "test_mcp_sampling",
             "test_mcp_protocol_compliance",
             "test_mcp_plugin_system",
-            "test_mcp_circuit_breaker"
+            "test_mcp_circuit_breaker",
+            "test_mcp_server",
+            "test_mcp_server_integration"
         ]
         
         if args.integration:

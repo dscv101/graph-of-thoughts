@@ -40,3 +40,4 @@ dependencies = [
 Homepage = "https://github.com/spcl/graph-of-thoughts"
 
 [project.scripts]
+got-mcp-server = "graph_of_thoughts.__main__:main"
