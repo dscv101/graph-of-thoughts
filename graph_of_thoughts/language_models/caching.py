@@ -32,9 +32,9 @@ import logging
 import threading
 import time
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +108,7 @@ class CacheStats:
         total = self.hits + self.misses
         return self.hits / total if total > 0 else 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> "dict[str, Any]":
         """Convert stats to dictionary."""
         return {
             "hits": self.hits,
@@ -140,17 +140,17 @@ class IntelligentCache:
         :param config: Cache configuration
         :type config: CacheConfig
         """
-        self.config = config
-        self._cache: OrderedDict[str, CacheEntry] = OrderedDict()
-        self._lock = threading.RLock()
-        self._stats = CacheStats(max_size=config.max_size)
-        self._last_cleanup = time.time()
+        self.config: CacheConfig = config
+        self._cache: "OrderedDict[str, CacheEntry]" = OrderedDict()
+        self._lock: threading.RLock = threading.RLock()
+        self._stats: CacheStats = CacheStats(max_size=config.max_size)
+        self._last_cleanup: float = time.time()
 
         logger.debug(
             f"Initialized cache with max_size={config.max_size}, policy={config.policy.value}"
         )
 
-    def _generate_key(self, *args, **kwargs) -> str:
+    def _generate_key(self, *args: Any, **kwargs: Any) -> str:
         """
         Generate a cache key from arguments and keyword arguments.
 
@@ -248,14 +248,14 @@ class IntelligentCache:
             return
 
         if self.config.policy == CachePolicy.LRU:
-            # Remove least recently used (first item in OrderedDict)
+            # Remove least recently used (first item in Ordered)
             self._cache.popitem(last=False)
         elif self.config.policy == CachePolicy.LFU:
             # Remove least frequently used
             lfu_key = min(self._cache.keys(), key=lambda k: self._cache[k].access_count)
             del self._cache[lfu_key]
         elif self.config.policy == CachePolicy.FIFO:
-            # Remove first in (first item in OrderedDict)
+            # Remove first in (first item in Ordered)
             self._cache.popitem(last=False)
 
         self._stats.evictions += 1
@@ -293,7 +293,7 @@ class IntelligentCache:
             self._stats.size = len(self._cache)
             return self._stats
 
-    def cache_key(self, *args, **kwargs) -> str:
+    def cache_key(self, *args: Any, **kwargs: Any) -> str:
         """
         Generate a cache key for the given arguments.
 
@@ -322,7 +322,7 @@ class MultiLevelCacheManager:
         :param config: Cache configuration
         :type config: CacheConfig
         """
-        self.config = config
+        self.config: CacheConfig = config
 
         # Create specialized caches
         response_config = CacheConfig(
@@ -346,16 +346,19 @@ class MultiLevelCacheManager:
             enable_statistics=config.enable_statistics,
         )
 
-        self.response_cache = IntelligentCache(response_config)
-        self.config_cache = IntelligentCache(config_cache_config)
-        self.metadata_cache = IntelligentCache(metadata_config)
+        self.response_cache: IntelligentCache = IntelligentCache(response_config)
+        self.config_cache: IntelligentCache = IntelligentCache(config_cache_config)
+        self.metadata_cache: IntelligentCache = IntelligentCache(metadata_config)
 
         logger.info(
-            f"Initialized multi-level cache manager with {config.response_cache_size} response, "
-            f"{config.config_cache_size} config, {config.metadata_cache_size} metadata entries"
+            "Initialized multi-level cache manager with %d response, "
+            "%d config, %d metadata entries",
+            config.response_cache_size,
+            config.config_cache_size,
+            config.metadata_cache_size
         )
 
-    def get_response(self, query: str, **params) -> Optional[Any]:
+    def get_response(self, query: str, **params: Any) -> Optional[Any]:
         """
         Get a cached response for the given query and parameters.
 
@@ -369,7 +372,7 @@ class MultiLevelCacheManager:
         return self.response_cache.get(key)
 
     def put_response(
-        self, query: str, response: Any, ttl: Optional[float] = None, **params
+        self, query: str, response: Any, ttl: Optional[float] = None, **params: Any
     ) -> None:
         """
         Cache a response for the given query and parameters.
@@ -385,7 +388,7 @@ class MultiLevelCacheManager:
         key = self.response_cache.cache_key(query, **params)
         self.response_cache.put(key, response, ttl)
 
-    def get_config(self, config_path: str, model_name: str) -> Optional[Dict]:
+    def get_config(self, config_path: str, model_name: str) -> Optional[Any]:
         """
         Get a cached configuration.
 
@@ -394,7 +397,7 @@ class MultiLevelCacheManager:
         :param model_name: Model name
         :type model_name: str
         :return: Cached configuration or None
-        :rtype: Optional[Dict]
+        :rtype: Optional[Any]
         """
         key = self.config_cache.cache_key(config_path, model_name)
         return self.config_cache.get(key)
@@ -403,7 +406,7 @@ class MultiLevelCacheManager:
         self,
         config_path: str,
         model_name: str,
-        config: Dict,
+        config: Any,
         ttl: Optional[float] = None,
     ) -> None:
         """
@@ -414,7 +417,7 @@ class MultiLevelCacheManager:
         :param model_name: Model name
         :type model_name: str
         :param config: Configuration to cache
-        :type config: Dict
+        :type config: Any
         :param ttl: Time to live in seconds
         :type ttl: Optional[float]
         """
@@ -453,12 +456,12 @@ class MultiLevelCacheManager:
         self.config_cache.clear()
         self.metadata_cache.clear()
 
-    def get_all_stats(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_stats(self) -> "dict[str, dict[str, Any]]":
         """
         Get statistics for all caches.
 
         :return: Dictionary containing stats for each cache
-        :rtype: Dict[str, Dict[str, Any]]
+        :rtype: dict[str, dict[str, Any]]
         """
         return {
             "response_cache": self.response_cache.get_stats().to_dict(),
@@ -497,12 +500,12 @@ def clear_global_cache() -> None:
         _global_cache_manager.clear_all()
 
 
-def get_global_cache_stats() -> Dict[str, Dict[str, Any]]:
+def get_global_cache_stats() -> "dict[str, dict[str, Any]]":
     """
     Get statistics for the global cache manager.
 
     :return: Cache statistics
-    :rtype: Dict[str, Dict[str, Any]]
+    :rtype: dict[str, dict[str, Any]]
     """
     global _global_cache_manager
     if _global_cache_manager is None:

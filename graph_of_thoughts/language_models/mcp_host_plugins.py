@@ -36,7 +36,7 @@ Example Usage:
         def get_host_name(self) -> str:
             return "my_custom_host"
         
-        def get_default_config(self) -> Dict[str, Any]:
+        def get_default_config(self) -> "dict[dict[str, Any]]":
             return {
                 "transport": {
                     "type": "stdio",
@@ -50,7 +50,7 @@ Example Usage:
                 }
             }
         
-        def validate_config(self, config: Dict[str, Any]) -> bool:
+        def validate_config(self, config: "dict[dict[str, Any]]") -> bool:
             # Custom validation logic
             return True
     
@@ -75,7 +75,7 @@ import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Optional, Type, Union
 
 logger = logging.getLogger(__name__)
 
@@ -92,8 +92,8 @@ class HostCapabilities:
         supports_sampling: Whether the host supports MCP sampling
         supports_roots: Whether the host supports MCP roots
         supports_discovery: Whether the host supports dynamic discovery
-        transport_types: List of supported transport types
-        authentication_methods: List of supported authentication methods
+        transport_types:  of supported transport types
+        authentication_methods:  of supported authentication methods
     """
 
     supports_resources: bool = False
@@ -102,8 +102,8 @@ class HostCapabilities:
     supports_sampling: bool = False
     supports_roots: bool = False
     supports_discovery: bool = False
-    transport_types: List[str] = None
-    authentication_methods: List[str] = None
+    transport_types: [str] = None
+    authentication_methods: [str] = None
 
     def __post_init__(self):
         if self.transport_types is None:
@@ -141,12 +141,12 @@ class MCPHostPlugin(ABC):
         pass
 
     @abstractmethod
-    def get_default_config(self) -> Dict[str, Any]:
+    def get_default_config(self) -> [str, Any]:
         """
         Get the default configuration for this MCP host.
 
         Returns:
-            Dict[str, Any]: Default configuration dictionary
+            [str, Any]: Default configuration dictionary
         """
         pass
 
@@ -160,7 +160,7 @@ class MCPHostPlugin(ABC):
         """
         pass
 
-    def validate_config(self, config: Dict[str, Any]) -> bool:
+    def validate_config(self, config: [str, Any]) -> bool:
         """
         Validate a configuration for this MCP host.
 
@@ -197,7 +197,7 @@ class MCPHostPlugin(ABC):
             logger.error(f"Config validation failed for {self.get_host_name()}: {e}")
             return False
 
-    def _validate_host_specific_config(self, config: Dict[str, Any]) -> bool:
+    def _validate_host_specific_config(self, config: [str, Any]) -> bool:
         """
         Perform host-specific configuration validation.
 
@@ -221,7 +221,7 @@ class MCPHostPlugin(ABC):
         config = self.get_default_config()
         return json.dumps({f"mcp_{self.get_host_name()}": config}, indent=4)
 
-    def customize_transport_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    def customize_transport_config(self, config: [str, Any]) -> [str, Any]:
         """
         Customize transport configuration for this host.
 
@@ -232,7 +232,7 @@ class MCPHostPlugin(ABC):
             config: Original configuration
 
         Returns:
-            Dict[str, Any]: Modified configuration
+            [str, Any]: Modified configuration
         """
         return config
 
@@ -246,7 +246,7 @@ class ClaudeDesktopPlugin(MCPHostPlugin):
     def get_display_name(self) -> str:
         return "Claude Desktop"
 
-    def get_default_config(self) -> Dict[str, Any]:
+    def get_default_config(self) -> [str, Any]:
         return {
             "transport": {
                 "type": "stdio",
@@ -296,7 +296,7 @@ class ClaudeDesktopPlugin(MCPHostPlugin):
             authentication_methods=[],
         )
 
-    def _validate_host_specific_config(self, config: Dict[str, Any]) -> bool:
+    def _validate_host_specific_config(self, config: [str, Any]) -> bool:
         """Validate Claude Desktop specific configuration."""
         transport_config = config.get("transport", {})
 
@@ -317,7 +317,7 @@ class VSCodePlugin(MCPHostPlugin):
     def get_display_name(self) -> str:
         return "VS Code"
 
-    def get_default_config(self) -> Dict[str, Any]:
+    def get_default_config(self) -> [str, Any]:
         return {
             "transport": {
                 "type": "stdio",
@@ -375,7 +375,7 @@ class CursorPlugin(MCPHostPlugin):
     def get_display_name(self) -> str:
         return "Cursor"
 
-    def get_default_config(self) -> Dict[str, Any]:
+    def get_default_config(self) -> [str, Any]:
         return {
             "transport": {
                 "type": "stdio",
@@ -427,7 +427,7 @@ class HTTPServerPlugin(MCPHostPlugin):
     def get_display_name(self) -> str:
         return "HTTP MCP Server"
 
-    def get_default_config(self) -> Dict[str, Any]:
+    def get_default_config(self) -> [str, Any]:
         return {
             "transport": {
                 "type": "http",
@@ -485,7 +485,7 @@ class HTTPServerPlugin(MCPHostPlugin):
             authentication_methods=["bearer", "basic", "oauth2"],
         )
 
-    def _validate_host_specific_config(self, config: Dict[str, Any]) -> bool:
+    def _validate_host_specific_config(self, config: [str, Any]) -> bool:
         """Validate HTTP server specific configuration."""
         transport_config = config.get("transport", {})
 
@@ -503,7 +503,7 @@ class HTTPServerPlugin(MCPHostPlugin):
 
 
 # Global plugin registry
-_plugin_registry: Dict[str, MCPHostPlugin] = {}
+_plugin_registry: [str, MCPHostPlugin] = {}
 
 
 def register_host_plugin(plugin: MCPHostPlugin) -> None:
@@ -536,12 +536,12 @@ def get_host_plugin(host_name: str) -> Optional[MCPHostPlugin]:
     return _plugin_registry.get(host_name)
 
 
-def list_available_hosts() -> List[str]:
+def list_available_hosts() -> [str]:
     """
     Get a list of all registered MCP host names.
 
     Returns:
-        List[str]: List of host identifiers
+        [str]:  of host identifiers
     """
     return list(_plugin_registry.keys())
 
@@ -560,7 +560,7 @@ def get_host_capabilities(host_name: str) -> Optional[HostCapabilities]:
     return plugin.get_capabilities() if plugin else None
 
 
-def create_transport_from_plugin(config: Dict[str, Any]) -> Any:
+def create_transport_from_plugin(config: [str, Any]) -> Any:
     """
     Create an MCP transport using the plugin system.
 
@@ -600,7 +600,7 @@ def create_transport_from_plugin(config: Dict[str, Any]) -> Any:
     return create_transport(config)
 
 
-def _detect_host_from_config(config: Dict[str, Any]) -> Optional[str]:
+def _detect_host_from_config(config: [str, Any]) -> Optional[str]:
     """
     Detect the MCP host type from configuration.
 
@@ -642,7 +642,7 @@ def generate_config_template(host_name: str) -> Optional[str]:
     return plugin.get_config_template() if plugin else None
 
 
-def validate_host_config(host_name: str, config: Dict[str, Any]) -> bool:
+def validate_host_config(host_name: str, config: [str, Any]) -> bool:
     """
     Validate a configuration for a specific MCP host.
 
@@ -657,12 +657,12 @@ def validate_host_config(host_name: str, config: Dict[str, Any]) -> bool:
     return plugin.validate_config(config) if plugin else False
 
 
-def discover_available_hosts() -> Dict[str, Dict[str, Any]]:
+def discover_available_hosts() -> [str, [str, Any]]:
     """
     Discover all available MCP hosts and their information.
 
     Returns:
-        Dict[str, Dict[str, Any]]: Dictionary mapping host names to their info
+        [str, [str, Any]]: ionary mapping host names to their info
     """
     hosts_info = {}
 

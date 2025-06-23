@@ -10,9 +10,14 @@ import json
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
-from .caching import CacheConfig, get_cache_manager
+try:
+    from .caching import CacheConfig, get_cache_manager
+except ImportError:
+    CacheConfig = None
+    def get_cache_manager(config: Any) -> None:
+        return None
 
 
 class AbstractLanguageModel(ABC):
@@ -25,7 +30,7 @@ class AbstractLanguageModel(ABC):
         config_path: str = "",
         model_name: str = "",
         cache: bool = False,
-        cache_config: Optional[CacheConfig] = None,
+        cache_config: Optional[Any] = None,
     ) -> None:
         """
         Initialize the AbstractLanguageModel instance with configuration, model details, and caching options.
@@ -37,22 +42,22 @@ class AbstractLanguageModel(ABC):
         :param cache: Flag to determine whether to cache responses. Defaults to False.
         :type cache: bool
         :param cache_config: Optional cache configuration for advanced caching features.
-        :type cache_config: Optional[CacheConfig]
+        :type cache_config: Optional[Any]
         """
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self.config: Dict = None
+        self.logger: logging.Logger = logging.getLogger(self.__class__.__name__)
+        self.config: "dict[str, Any]" = {}
         self.model_name: str = model_name
-        self.cache = cache
+        self.cache: bool = cache
 
         # Initialize intelligent caching system
         if self.cache:
             self.cache_manager = get_cache_manager(cache_config)
             # Keep legacy cache for backward compatibility
-            self.response_cache: Dict[str, List[Any]] = {}
+            self.response_cache: "dict[str, list[Any]]" = {}
         else:
             self.cache_manager = None
 
-        self.config_path = config_path
+        self.config_path: str = config_path
         self.load_config(config_path)
         self.prompt_tokens: int = 0
         self.completion_tokens: int = 0
@@ -99,12 +104,12 @@ class AbstractLanguageModel(ABC):
         if self.cache_manager:
             self.cache_manager.clear_all()
 
-    def get_cache_stats(self) -> Optional[Dict[str, Dict[str, Any]]]:
+    def get_cache_stats(self) -> Optional["dict[str, dict[str, Any]]"]:
         """
         Get cache statistics for monitoring and debugging.
 
         :return: Cache statistics or None if caching is disabled
-        :rtype: Optional[Dict[str, Dict[str, Any]]]
+        :rtype: Optional[dict[str, dict[str, Any]]]
         """
         if not self.cache or not self.cache_manager:
             return None
@@ -125,13 +130,13 @@ class AbstractLanguageModel(ABC):
         pass
 
     @abstractmethod
-    def get_response_texts(self, query_responses: Union[List[Any], Any]) -> List[str]:
+    def get_response_texts(self, query_responses: Union["list[Any]", Any]) -> "list[str]":
         """
         Abstract method to extract response texts from the language model's response(s).
 
         :param query_responses: The responses returned from the language model.
-        :type query_responses: Union[List[Any], Any]
+        :type query_responses: Union[list[Any], Any]
         :return: List of textual responses.
-        :rtype: List[str]
+        :rtype: list[str]
         """
         pass

@@ -8,7 +8,7 @@
 
 import json
 import logging
-from typing import List
+from typing import Any
 
 from graph_of_thoughts.language_models import AbstractLanguageModel
 from graph_of_thoughts.operations import GraphOfOperations, Thought
@@ -29,7 +29,7 @@ class Controller:
         graph: GraphOfOperations,
         prompter: Prompter,
         parser: Parser,
-        problem_parameters: dict,
+        problem_parameters: "dict[str, Any]",
     ) -> None:
         """
         Initialize the Controller instance with the language model,
@@ -44,15 +44,15 @@ class Controller:
         :param parser: An instance of the Parser class, used to parse responses.
         :type parser: Parser
         :param problem_parameters: Initial parameters/state of the problem.
-        :type problem_parameters: dict
+        :type problem_parameters: "dict[dict[str, Any]]"
         """
-        self.logger = logging.getLogger(self.__class__.__module__)
-        self.lm = lm
-        self.graph = graph
-        self.prompter = prompter
-        self.parser = parser
-        self.problem_parameters = problem_parameters
-        self.run_executed = False
+        self.logger: logging.Logger = logging.getLogger(self.__class__.__module__)
+        self.lm: AbstractLanguageModel = lm
+        self.graph: GraphOfOperations = graph
+        self.prompter: Prompter = prompter
+        self.parser: Parser = parser
+        self.problem_parameters: "dict[str, Any]" = problem_parameters
+        self.run_executed: bool = False
 
     def run(self) -> None:
         """
@@ -88,12 +88,12 @@ class Controller:
         self.logger.info("All operations executed")
         self.run_executed = True
 
-    def get_final_thoughts(self) -> List[List[Thought]]:
+    def get_final_thoughts(self) -> "list[list[Thought]]":
         """
         Retrieve the final thoughts after all operations have been executed.
 
         :return: List of thoughts for each operation in the graph's leaves.
-        :rtype: List[List[Thought]]
+        :rtype: "list[list[list[Thought]]"]
         :raises AssertionError: If the `run` method hasn't been executed yet.
         """
         assert self.run_executed, "The run method has not been executed"

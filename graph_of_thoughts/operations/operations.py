@@ -13,7 +13,7 @@ import itertools
 import logging
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Callable, Dict, Iterator, List, Optional, Union
+from typing import Callable, Iterator, Optional, Union
 
 from graph_of_thoughts.language_models import AbstractLanguageModel
 from graph_of_thoughts.operations.thought import Thought
@@ -55,8 +55,8 @@ class Operation(ABC):
         """
         self.logger: logging.Logger = logging.getLogger(self.__class__.__name__)
         self.id: int = next(Operation._ids)
-        self.predecessors: List[Operation] = []
-        self.successors: List[Operation] = []
+        self.predecessors: "list[list[Operation]]" = []
+        self.successors: "list[list[Operation]]" = []
         self.executed: bool = False
 
     def can_be_executed(self) -> bool:
@@ -68,14 +68,14 @@ class Operation(ABC):
         """
         return all(predecessor.executed for predecessor in self.predecessors)
 
-    def get_previous_thoughts(self) -> List[Thought]:
+    def get_previous_thoughts(self) -> "list[list[Thought]]":
         """
         Iterates over all predecessors and aggregates their thoughts.
 
         :return: A list of all thoughts from the predecessors.
-        :rtype: List[Thought]
+        :rtype: "list[list[Thought]]"
         """
-        previous_thoughts: List[Thought] = [
+        previous_thoughts: "list[list[Thought]]" = [
             thought
             for predecessor in self.predecessors
             for thought in predecessor.get_thoughts()
@@ -145,13 +145,13 @@ class Operation(ABC):
         pass
 
     @abstractmethod
-    def get_thoughts(self) -> List[Thought]:
+    def get_thoughts(self) -> "list[list[Thought]]":
         """
         Abstract method to retrieve the thoughts associated with the operation.
         This should be implemented in derived classes.
 
         :return: List of associated thoughts.
-        :rtype: List[Thought]
+        :rtype: "list[list[Thought]]"
         """
         pass
 
@@ -168,7 +168,7 @@ class Score(Operation):
         num_samples: int = 1,
         combined_scoring: bool = False,
         scoring_function: Callable[
-            [Union[List[Dict], Dict]], Union[List[float], float]
+            [Union["list[list[dict]]", dict]], Union["list[list[float]]", float]
         ] = None,
     ) -> None:
         """
@@ -185,17 +185,17 @@ class Score(Operation):
         super().__init__()
         self.num_samples: int = num_samples
         self.combined_scoring: bool = combined_scoring
-        self.thoughts: List[Thought] = []
+        self.thoughts: "list[list[Thought]]" = []
         self.scoring_function: Callable[
-            [Union[List[Dict], Dict]], Union[List[float], float]
+            [Union["list[list[dict]]", dict]], Union["list[list[float]]", float]
         ] = scoring_function
 
-    def get_thoughts(self) -> List[Thought]:
+    def get_thoughts(self) -> "list[list[Thought]]":
         """
         Returns the thoughts associated with the operation.
 
         :return: List of scored thoughts.
-        :rtype: List[Thought]
+        :rtype: "list[list[Thought]]"
         """
         return self.thoughts
 
@@ -216,7 +216,7 @@ class Score(Operation):
         :param kwargs: Additional parameters for execution.
         :raises AssertionError: If operation has no predecessors.
         """
-        previous_thoughts: List[Thought] = self.get_previous_thoughts()
+        previous_thoughts: "list[list[Thought]]" = self.get_previous_thoughts()
 
         assert (
             len(self.predecessors) > 0
@@ -302,14 +302,14 @@ class ValidateAndImprove(Operation):
         self.improve: bool = improve
         self.num_tries: int = num_tries
         self.validate_function: Callable[[Dict], bool] = validate_function
-        self.thoughts: List[List[Thought]] = []
+        self.thoughts: "list[list[list[Thought]]"] = []
 
-    def get_thoughts(self) -> List[Thought]:
+    def get_thoughts(self) -> "list[list[Thought]]":
         """
         Returns the list of final thoughts, after validation and improvement.
 
         :return: List of final validated and improved thoughts.
-        :rtype: List[Thought]
+        :rtype: "list[list[Thought]]"
         """
         return [thought_list[-1] for thought_list in self.thoughts]
 
@@ -330,7 +330,7 @@ class ValidateAndImprove(Operation):
         :param kwargs: Additional parameters for execution.
         :raises AssertionError: If operation has no predecessors.
         """
-        previous_thoughts: List[Thought] = self.get_previous_thoughts()
+        previous_thoughts: "list[list[Thought]]" = self.get_previous_thoughts()
 
         assert (
             len(self.predecessors) > 0
@@ -414,14 +414,14 @@ class Generate(Operation):
         super().__init__()
         self.num_branches_prompt: int = num_branches_prompt
         self.num_branches_response: int = num_branches_response
-        self.thoughts: List[Thought] = []
+        self.thoughts: "list[list[Thought]]" = []
 
-    def get_thoughts(self) -> List[Thought]:
+    def get_thoughts(self) -> "list[list[Thought]]":
         """
         Returns the thoughts associated with the operation.
 
         :return: List of generated thoughts.
-        :rtype: List[Thought]
+        :rtype: "list[list[Thought]]"
         """
         return self.thoughts
 
@@ -441,7 +441,7 @@ class Generate(Operation):
         :type parser: Parser
         :param kwargs: Additional parameters for execution.
         """
-        previous_thoughts: List[Thought] = self.get_previous_thoughts()
+        previous_thoughts: "list[list[Thought]]" = self.get_previous_thoughts()
 
         if len(previous_thoughts) == 0 and len(self.predecessors) > 0:
             return
@@ -494,14 +494,14 @@ class Improve(Operation):
         Initializes a new Improve operation.
         """
         super().__init__()
-        self.thoughts: List[Thought] = []
+        self.thoughts: "list[list[Thought]]" = []
 
-    def get_thoughts(self) -> List[Thought]:
+    def get_thoughts(self) -> "list[list[Thought]]":
         """
         Returns the thoughts associated with the operation after improvement.
 
         :return: List of improved thoughts.
-        :rtype: List[Thought]
+        :rtype: "list[list[Thought]]"
         """
         return self.thoughts
 
@@ -521,7 +521,7 @@ class Improve(Operation):
         :param kwargs: Additional parameters for execution.
         :raises AssertionError: If operation has no predecessors.
         """
-        previous_thoughts: List[Thought] = self.get_previous_thoughts()
+        previous_thoughts: "list[list[Thought]]" = self.get_previous_thoughts()
 
         assert len(self.predecessors) > 0, "Needs at least one predecessor"
 
@@ -553,15 +553,15 @@ class Aggregate(Operation):
         :type num_responses: int
         """
         super().__init__()
-        self.thoughts: List[Thought] = []
+        self.thoughts: "list[list[Thought]]" = []
         self.num_responses: int = num_responses
 
-    def get_thoughts(self) -> List[Thought]:
+    def get_thoughts(self) -> "list[list[Thought]]":
         """
         Returns the thoughts associated with the operation after aggregation.
 
         :return: List of aggregated thoughts.
-        :rtype: List[Thought]
+        :rtype: "list[list[Thought]]"
         """
         return self.thoughts
 
@@ -585,7 +585,7 @@ class Aggregate(Operation):
             len(self.predecessors) >= 1
         ), "Aggregate operation must have at least one predecessor"
 
-        previous_thoughts: List[Thought] = self.get_previous_thoughts()
+        previous_thoughts: "list[list[Thought]]" = self.get_previous_thoughts()
 
         if len(previous_thoughts) == 0:
             return
@@ -635,18 +635,18 @@ class KeepBestN(Operation):
         self.n: int = n
         assert self.n > 0, "KeepBestN operation must keep at least one thought"
         self.higher_is_better: bool = higher_is_better
-        self.thoughts: List[Thought] = []
+        self.thoughts: "list[list[Thought]]" = []
 
-    def get_best_n(self) -> List[Thought]:
+    def get_best_n(self) -> "list[list[Thought]]":
         """
         Returns the best N thoughts from the predecessors based on their score.
 
         :return: List of best N thoughts.
-        :rtype: List[Thought]
+        :rtype: "list[list[Thought]]"
         :raises AssertionError: If not all predecessors have been executed.
         :raises AssertionError: If not all thoughts have been scored.
         """
-        previous_thoughts: List[Thought] = self.get_previous_thoughts()
+        previous_thoughts: "list[list[Thought]]" = self.get_previous_thoughts()
         assert all(
             previous_thought.scored for previous_thought in previous_thoughts
         ), "Not all thoughts have been scored"
@@ -672,12 +672,12 @@ class KeepBestN(Operation):
                 reverse=self.higher_is_better,
             )[: self.n]
 
-    def get_thoughts(self) -> List[Thought]:
+    def get_thoughts(self) -> "list[list[Thought]]":
         """
         Returns the thoughts kept by the operation.
 
         :return: List of kept thoughts.
-        :rtype: List[Thought]
+        :rtype: "list[list[Thought]]"
         """
         return self.thoughts
 
@@ -726,14 +726,14 @@ class KeepValid(Operation):
         Initializes a new KeepValid operation.
         """
         super().__init__()
-        self.thoughts: List[Thought] = []
+        self.thoughts: "list[list[Thought]]" = []
 
-    def get_thoughts(self) -> List[Thought]:
+    def get_thoughts(self) -> "list[list[Thought]]":
         """
         Returns the thoughts kept by the operation.
 
         :return: List of kept thoughts.
-        :rtype: List[Thought]
+        :rtype: "list[list[Thought]]"
         """
         return self.thoughts
 
@@ -757,7 +757,7 @@ class KeepValid(Operation):
             len(self.predecessors) >= 1
         ), "KeepValid operation must have at least one predecessor"
 
-        self.thoughts: List[Thought] = [
+        self.thoughts: "list[list[Thought]]" = [
             Thought.from_thought(thought)
             for thought in self.get_previous_thoughts()
             if not thought.validated or thought.valid
@@ -794,14 +794,14 @@ class GroundTruth(Operation):
         """
         super().__init__()
         self.ground_truth_evaluator: Callable[[Dict], bool] = ground_truth_evaluator
-        self.thoughts: List[Thought] = []
+        self.thoughts: "list[list[Thought]]" = []
 
-    def get_thoughts(self) -> List[Thought]:
+    def get_thoughts(self) -> "list[list[Thought]]":
         """
         Returns the thoughts associated with the operation.
 
         :return: List of evaluated thoughts.
-        :rtype: List[Thought]
+        :rtype: "list[list[Thought]]"
         """
         return self.thoughts
 
@@ -824,7 +824,7 @@ class GroundTruth(Operation):
             len(self.predecessors) >= 1
         ), "GroundTruth operation must have at least one predecessor"
 
-        previous_thoughts: List[Thought] = self.get_previous_thoughts()
+        previous_thoughts: "list[list[Thought]]" = self.get_previous_thoughts()
 
         for thought in previous_thoughts:
             new_thought = Thought.from_thought(thought)
@@ -850,7 +850,7 @@ class Selector(Operation):
 
     operation_type: OperationType = OperationType.selector
 
-    def __init__(self, selector: Callable[[List[Thought]], List[Thought]]) -> None:
+    def __init__(self, selector: Callable[["list[list[Thought]]"], "list[list[Thought]]"]) -> None:
         """
         Initializes a new Selector operation.
 
@@ -858,15 +858,15 @@ class Selector(Operation):
         :type selector: A function that takes a list of thoughts and returns a list of thoughts.
         """
         super().__init__()
-        self.selector: Callable[[List[Thought]], List[Thought]] = selector
-        self.thoughts: List[Thought] = []
+        self.selector: Callable[["list[list[Thought]]"], "list[list[Thought]]"] = selector
+        self.thoughts: "list[list[Thought]]" = []
 
-    def get_thoughts(self) -> List[Thought]:
+    def get_thoughts(self) -> "list[list[Thought]]":
         """
         Returns the thoughts selected by the operation.
 
         :return: List of selected thoughts.
-        :rtype: List[Thought]
+        :rtype: "list[list[Thought]]"
         """
         return self.thoughts
 
@@ -885,7 +885,7 @@ class Selector(Operation):
         :type parser: Parser
         :param kwargs: Additional parameters for execution.
         """
-        previous_thoughts: List[Thought] = self.get_previous_thoughts()
+        previous_thoughts: "list[list[Thought]]" = self.get_previous_thoughts()
 
         if len(previous_thoughts) == 0:
             previous_thoughts = [Thought(kwargs)]
@@ -946,14 +946,14 @@ class BatchGenerate(Operation):
         self.max_concurrent: Optional[int] = max_concurrent
         self.batch_size: Optional[int] = batch_size
         self.enable_batch_processing: bool = enable_batch_processing
-        self.thoughts: List[Thought] = []
+        self.thoughts: "list[list[Thought]]" = []
 
-    def get_thoughts(self) -> List[Thought]:
+    def get_thoughts(self) -> "list[list[Thought]]":
         """
         Returns the thoughts associated with the operation.
 
         :return: List of generated thoughts.
-        :rtype: List[Thought]
+        :rtype: "list[list[Thought]]"
         """
         return self.thoughts
 
@@ -971,7 +971,7 @@ class BatchGenerate(Operation):
         :type parser: Parser
         :param kwargs: Additional parameters for execution.
         """
-        previous_thoughts: List[Thought] = self.get_previous_thoughts()
+        previous_thoughts: "list[list[Thought]]" = self.get_previous_thoughts()
 
         if len(previous_thoughts) == 0 and len(self.predecessors) > 0:
             return
@@ -1012,7 +1012,7 @@ class BatchGenerate(Operation):
         lm: AbstractLanguageModel,
         prompter: Prompter,
         parser: Parser,
-        previous_thoughts: List[Thought],
+        previous_thoughts: "list[list[Thought]]",
     ) -> None:
         """
         Execute generation using batch processing for improved performance.
@@ -1024,7 +1024,7 @@ class BatchGenerate(Operation):
         :param parser: The parser for parsing responses.
         :type parser: Parser
         :param previous_thoughts: List of thoughts to process.
-        :type previous_thoughts: List[Thought]
+        :type previous_thoughts: "list[list[Thought]]"
         """
         self.logger.info(
             f"Using batch processing for {len(previous_thoughts)} thoughts"
@@ -1079,17 +1079,17 @@ class BatchGenerate(Operation):
                 self.thoughts.append(Thought(error_state))
 
     def _run_async_batch_safely(
-        self, lm: AbstractLanguageModel, prompts: List[str]
-    ) -> List[Dict]:
+        self, lm: AbstractLanguageModel, prompts: "list[list[str]]"
+    ) -> "list[list[Dict]]":
         """
         Safely run batch processing with optimized event loop management.
 
         :param lm: The language model to be used.
         :type lm: AbstractLanguageModel
         :param prompts: List of prompts to process.
-        :type prompts: List[str]
+        :type prompts: "list[list[str]]"
         :return: List of responses.
-        :rtype: List[Dict]
+        :rtype: "list[list[Dict]]"
         :raises RuntimeError: If called from within an async context
         """
 
@@ -1113,17 +1113,17 @@ class BatchGenerate(Operation):
                 raise
 
     async def _run_batch_async(
-        self, lm: AbstractLanguageModel, prompts: List[str]
-    ) -> List[Dict]:
+        self, lm: AbstractLanguageModel, prompts: "list[list[str]]"
+    ) -> "list[list[Dict]]":
         """
         Run batch processing asynchronously.
 
         :param lm: The language model to be used.
         :type lm: AbstractLanguageModel
         :param prompts: List of prompts to process.
-        :type prompts: List[str]
+        :type prompts: "list[list[str]]"
         :return: List of responses.
-        :rtype: List[Dict]
+        :rtype: "list[list[Dict]]"
         """
         async with lm:  # Use async context manager
             return await lm.query_batch(
@@ -1135,7 +1135,7 @@ class BatchGenerate(Operation):
         lm: AbstractLanguageModel,
         prompter: Prompter,
         parser: Parser,
-        previous_thoughts: List[Thought],
+        previous_thoughts: "list[list[Thought]]",
     ) -> None:
         """
         Execute generation using sequential processing (fallback method).
@@ -1147,7 +1147,7 @@ class BatchGenerate(Operation):
         :param parser: The parser for parsing responses.
         :type parser: Parser
         :param previous_thoughts: List of thoughts to process.
-        :type previous_thoughts: List[Thought]
+        :type previous_thoughts: "list[list[Thought]]"
         """
         self.logger.info(
             f"Using sequential processing for {len(previous_thoughts)} thoughts"
@@ -1189,7 +1189,7 @@ class BatchScore(Operation):
         num_samples: int = 1,
         combined_scoring: bool = False,
         scoring_function: Callable[
-            [Union[List[Dict], Dict]], Union[List[float], float]
+            [Union["list[list[Dict]]", Dict]], Union["list[list[float]]", float]
         ] = None,
         max_concurrent: Optional[int] = None,
         batch_size: Optional[int] = None,
@@ -1216,19 +1216,19 @@ class BatchScore(Operation):
         self.num_samples: int = num_samples
         self.combined_scoring: bool = combined_scoring
         self.scoring_function: Callable[
-            [Union[List[Dict], Dict]], Union[List[float], float]
+            [Union["list[list[Dict]]", Dict]], Union["list[list[float]]", float]
         ] = scoring_function
         self.max_concurrent: Optional[int] = max_concurrent
         self.batch_size: Optional[int] = batch_size
         self.enable_batch_processing: bool = enable_batch_processing
-        self.thoughts: List[Thought] = []
+        self.thoughts: "list[list[Thought]]" = []
 
-    def get_thoughts(self) -> List[Thought]:
+    def get_thoughts(self) -> "list[list[Thought]]":
         """
         Returns the thoughts associated with the operation.
 
         :return: List of scored thoughts.
-        :rtype: List[Thought]
+        :rtype: "list[list[Thought]]"
         """
         return self.thoughts
 
@@ -1247,7 +1247,7 @@ class BatchScore(Operation):
         :param kwargs: Additional parameters for execution.
         :raises AssertionError: If operation has no predecessors.
         """
-        previous_thoughts: List[Thought] = self.get_previous_thoughts()
+        previous_thoughts: "list[list[Thought]]" = self.get_previous_thoughts()
 
         assert (
             len(self.predecessors) > 0
@@ -1280,7 +1280,7 @@ class BatchScore(Operation):
         lm: AbstractLanguageModel,
         prompter: Prompter,
         parser: Parser,
-        previous_thoughts: List[Thought],
+        previous_thoughts: "list[list[Thought]]",
     ) -> None:
         """
         Execute combined scoring for all thoughts together.
@@ -1292,7 +1292,7 @@ class BatchScore(Operation):
         :param parser: The parser for parsing responses.
         :type parser: Parser
         :param previous_thoughts: List of thoughts to score.
-        :type previous_thoughts: List[Thought]
+        :type previous_thoughts: "list[list[Thought]]"
         """
         previous_thoughts_states = [thought.state for thought in previous_thoughts]
         if self.scoring_function is not None:
@@ -1320,7 +1320,7 @@ class BatchScore(Operation):
         lm: AbstractLanguageModel,
         prompter: Prompter,
         parser: Parser,
-        previous_thoughts: List[Thought],
+        previous_thoughts: "list[list[Thought]]",
     ) -> None:
         """
         Execute scoring using batch processing for improved performance.
@@ -1332,7 +1332,7 @@ class BatchScore(Operation):
         :param parser: The parser for parsing responses.
         :type parser: Parser
         :param previous_thoughts: List of thoughts to score.
-        :type previous_thoughts: List[Thought]
+        :type previous_thoughts: "list[list[Thought]]"
         """
         self.logger.info(f"Using batch scoring for {len(previous_thoughts)} thoughts")
 
@@ -1385,17 +1385,17 @@ class BatchScore(Operation):
                 self.thoughts.append(new_thought)
 
     def _run_async_batch_safely(
-        self, lm: AbstractLanguageModel, prompts: List[str]
-    ) -> List[Dict]:
+        self, lm: AbstractLanguageModel, prompts: "list[list[str]]"
+    ) -> "list[list[Dict]]":
         """
         Safely run batch processing with optimized event loop management.
 
         :param lm: The language model to be used.
         :type lm: AbstractLanguageModel
         :param prompts: List of prompts to process.
-        :type prompts: List[str]
+        :type prompts: "list[list[str]]"
         :return: List of responses.
-        :rtype: List[Dict]
+        :rtype: "list[list[Dict]]"
         :raises RuntimeError: If called from within an async context
         """
 
@@ -1419,17 +1419,17 @@ class BatchScore(Operation):
                 raise
 
     async def _run_batch_async(
-        self, lm: AbstractLanguageModel, prompts: List[str]
-    ) -> List[Dict]:
+        self, lm: AbstractLanguageModel, prompts: "list[list[str]]"
+    ) -> "list[list[Dict]]":
         """
         Run batch processing asynchronously for scoring.
 
         :param lm: The language model to be used.
         :type lm: AbstractLanguageModel
         :param prompts: List of prompts to process.
-        :type prompts: List[str]
+        :type prompts: "list[list[str]]"
         :return: List of responses.
-        :rtype: List[Dict]
+        :rtype: "list[list[Dict]]"
         """
         async with lm:  # Use async context manager
             return await lm.query_batch(
@@ -1441,7 +1441,7 @@ class BatchScore(Operation):
         lm: AbstractLanguageModel,
         prompter: Prompter,
         parser: Parser,
-        previous_thoughts: List[Thought],
+        previous_thoughts: "list[list[Thought]]",
     ) -> None:
         """
         Execute scoring using sequential processing (fallback method).
@@ -1453,7 +1453,7 @@ class BatchScore(Operation):
         :param parser: The parser for parsing responses.
         :type parser: Parser
         :param previous_thoughts: List of thoughts to score.
-        :type previous_thoughts: List[Thought]
+        :type previous_thoughts: "list[list[Thought]]"
         """
         self.logger.info(
             f"Using sequential scoring for {len(previous_thoughts)} thoughts"
@@ -1518,14 +1518,14 @@ class BatchAggregate(Operation):
         self.max_concurrent: Optional[int] = max_concurrent
         self.batch_size: Optional[int] = batch_size
         self.enable_batch_processing: bool = enable_batch_processing
-        self.thoughts: List[Thought] = []
+        self.thoughts: "list[list[Thought]]" = []
 
-    def get_thoughts(self) -> List[Thought]:
+    def get_thoughts(self) -> "list[list[Thought]]":
         """
         Returns the thoughts associated with the operation after aggregation.
 
         :return: List of aggregated thoughts.
-        :rtype: List[Thought]
+        :rtype: "list[list[Thought]]"
         """
         return self.thoughts
 
@@ -1548,7 +1548,7 @@ class BatchAggregate(Operation):
             len(self.predecessors) >= 1
         ), "BatchAggregate operation must have at least one predecessor"
 
-        previous_thoughts: List[Thought] = self.get_previous_thoughts()
+        previous_thoughts: "list[list[Thought]]" = self.get_previous_thoughts()
 
         if len(previous_thoughts) == 0:
             return
@@ -1585,7 +1585,7 @@ class BatchAggregate(Operation):
         lm: AbstractLanguageModel,
         prompter: Prompter,
         parser: Parser,
-        previous_thought_states: List[Dict],
+        previous_thought_states: "list[list[Dict]]",
         base_state: Dict,
     ) -> None:
         """
@@ -1598,7 +1598,7 @@ class BatchAggregate(Operation):
         :param parser: The parser for parsing responses.
         :type parser: Parser
         :param previous_thought_states: List of thought states to aggregate.
-        :type previous_thought_states: List[Dict]
+        :type previous_thought_states: "list[list[Dict]]"
         :param base_state: Base state for new thoughts.
         :type base_state: Dict
         """
@@ -1648,17 +1648,17 @@ class BatchAggregate(Operation):
             self.thoughts.append(Thought(fallback_state))
 
     def _run_async_batch_safely(
-        self, lm: AbstractLanguageModel, prompts: List[str]
-    ) -> List[Dict]:
+        self, lm: AbstractLanguageModel, prompts: "list[list[str]]"
+    ) -> "list[list[Dict]]":
         """
         Safely run batch processing with optimized event loop management.
 
         :param lm: The language model to be used.
         :type lm: AbstractLanguageModel
         :param prompts: List of prompts to process.
-        :type prompts: List[str]
+        :type prompts: "list[list[str]]"
         :return: List of responses.
-        :rtype: List[Dict]
+        :rtype: "list[list[Dict]]"
         :raises RuntimeError: If called from within an async context
         """
 
@@ -1682,17 +1682,17 @@ class BatchAggregate(Operation):
                 raise
 
     async def _run_batch_async(
-        self, lm: AbstractLanguageModel, prompts: List[str]
-    ) -> List[Dict]:
+        self, lm: AbstractLanguageModel, prompts: "list[list[str]]"
+    ) -> "list[list[Dict]]":
         """
         Run batch processing asynchronously for aggregation.
 
         :param lm: The language model to be used.
         :type lm: AbstractLanguageModel
         :param prompts: List of prompts to process.
-        :type prompts: List[str]
+        :type prompts: "list[list[str]]"
         :return: List of responses.
-        :rtype: List[Dict]
+        :rtype: "list[list[Dict]]"
         """
         async with lm:  # Use async context manager
             return await lm.query_batch(
@@ -1704,7 +1704,7 @@ class BatchAggregate(Operation):
         lm: AbstractLanguageModel,
         prompter: Prompter,
         parser: Parser,
-        previous_thought_states: List[Dict],
+        previous_thought_states: "list[list[Dict]]",
         base_state: Dict,
     ) -> None:
         """
@@ -1717,7 +1717,7 @@ class BatchAggregate(Operation):
         :param parser: The parser for parsing responses.
         :type parser: Parser
         :param previous_thought_states: List of thought states to aggregate.
-        :type previous_thought_states: List[Dict]
+        :type previous_thought_states: "list[list[Dict]]"
         :param base_state: Base state for new thoughts.
         :type base_state: Dict
         """

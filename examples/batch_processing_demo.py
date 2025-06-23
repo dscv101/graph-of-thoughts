@@ -22,7 +22,7 @@ Requirements:
 import asyncio
 import logging
 import time
-from typing import Dict, List
+# Type annotations use built-in types for Python 3.9+ compatibility
 
 from graph_of_thoughts.controller import Controller
 from graph_of_thoughts.language_models import MCPLanguageModel

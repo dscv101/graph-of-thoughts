@@ -80,30 +80,30 @@ Examples:
         """,
     )
 
-    parser.add_argument(
+    _ = parser.add_argument(
         "--transport",
         choices=["stdio", "http"],
         default="stdio",
         help="Transport mechanism to use (default: stdio)",
     )
 
-    parser.add_argument(
+    _ = parser.add_argument(
         "--port", type=int, default=8080, help="Port for HTTP transport (default: 8080)"
     )
 
-    parser.add_argument(
+    _ = parser.add_argument(
         "--host",
         default="localhost",
         help="Host for HTTP transport (default: localhost)",
     )
 
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    _ = parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
-    parser.add_argument(
+    _ = parser.add_argument(
         "--info", action="store_true", help="Show server information and exit"
     )
 
-    parser.add_argument("--version", action="store_true", help="Show version and exit")
+    _ = parser.add_argument("--version", action="store_true", help="Show version and exit")
 
     return parser.parse_args()
 

@@ -18,7 +18,7 @@ import logging
 import statistics
 import time
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+# Type annotations use built-in types for Python 3.9+ compatibility
 
 from graph_of_thoughts.language_models import MCPLanguageModel
 

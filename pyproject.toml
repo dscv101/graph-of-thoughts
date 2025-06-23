@@ -41,3 +41,78 @@ Homepage = "https://github.com/spcl/graph-of-thoughts"
 
 [project.scripts]
 got-mcp-server = "graph_of_thoughts.__main__:main"
+
+[tool.basedpyright]
+# Type checking configuration for basedpyright
+pythonVersion = "3.8"
+pythonPlatform = "All"
+typeCheckingMode = "standard"
+
+# Include and exclude patterns
+include = ["graph_of_thoughts", "examples", "tests"]
+exclude = [
+    "**/__pycache__",
+    "**/node_modules",
+    "**/.venv",
+    "**/venv",
+    "build",
+    "dist",
+    "paper",
+    "docs"
+]
+
+# Reporting settings
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportImportCycles = true
+reportUnusedImport = true
+reportUnusedClass = true
+reportUnusedFunction = true
+reportUnusedVariable = true
+reportDuplicateImport = true
+reportOptionalSubscript = true
+reportOptionalMemberAccess = true
+reportOptionalCall = true
+reportOptionalIterable = true
+reportOptionalContextManager = true
+reportOptionalOperand = true
+reportTypedDictNotRequiredAccess = false
+reportPrivateImportUsage = true
+reportConstantRedefinition = true
+reportIncompatibleMethodOverride = true
+reportIncompatibleVariableOverride = true
+# reportOverlappingOverloads = true  # Not supported in this version
+reportUntypedFunctionDecorator = false
+reportUnknownParameterType = true
+reportUnknownArgumentType = false
+reportUnknownLambdaType = true
+reportUnknownVariableType = false
+reportUnknownMemberType = false
+reportMissingParameterType = true
+reportMissingTypeArgument = true
+reportInvalidTypeVarUse = true
+reportCallInDefaultInitializer = true
+reportUnnecessaryIsInstance = true
+reportUnnecessaryCast = true
+reportUnnecessaryComparison = true
+reportAssertAlwaysTrue = true
+reportSelfClsParameterName = true
+reportImplicitStringConcatenation = true
+reportInvalidStubStatement = true
+reportIncompleteStub = true
+reportUnsupportedDunderAll = true
+reportUnusedCallResult = false
+reportDeprecated = true
+reportUnannotatedClassAttribute = true
+reportAbstractUsage = true
+reportImplicitOverride = false
+
+# Diagnostic severity overrides
+strictListInference = true
+strictDictionaryInference = true
+strictSetInference = true
+strictParameterNoneValue = true
+
+# Additional settings for better type checking
+enableTypeIgnoreComments = true
+disableBytesTypePromotions = true

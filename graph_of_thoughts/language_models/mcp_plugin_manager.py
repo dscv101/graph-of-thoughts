@@ -71,7 +71,7 @@ Example Usage:
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from .mcp_host_plugins import (
     HostCapabilities,
@@ -103,16 +103,16 @@ class MCPPluginManager:
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.logger.info("Initialized MCP Plugin Manager")
 
-    def list_hosts(self) -> List[str]:
+    def list_hosts(self) -> [str]:
         """
         Get a list of all available MCP host names.
 
         Returns:
-            List[str]: List of registered host identifiers
+            [str]:  of registered host identifiers
         """
         return list_available_hosts()
 
-    def get_host_info(self, host_name: str) -> Optional[Dict[str, Any]]:
+    def get_host_info(self, host_name: str) -> Optional[[str, Any]]:
         """
         Get detailed information about a specific MCP host.
 
@@ -120,7 +120,7 @@ class MCPPluginManager:
             host_name: The host identifier
 
         Returns:
-            Dict[str, Any]: Host information including capabilities and config template
+            [str, Any]: Host information including capabilities and config template
         """
         plugin = get_host_plugin(host_name)
         if not plugin:
@@ -189,7 +189,7 @@ class MCPPluginManager:
         """
         return generate_config_template(host_name)
 
-    def validate_config(self, host_name: str, config: Dict[str, Any]) -> bool:
+    def validate_config(self, host_name: str, config: [str, Any]) -> bool:
         """
         Validate a configuration for a specific MCP host.
 
@@ -202,7 +202,7 @@ class MCPPluginManager:
         """
         return validate_host_config(host_name, config)
 
-    def create_transport(self, config: Dict[str, Any]) -> Any:
+    def create_transport(self, config: [str, Any]) -> Any:
         """
         Create an MCP transport using the plugin system.
 
@@ -217,7 +217,7 @@ class MCPPluginManager:
         """
         return create_transport_from_plugin(config)
 
-    def load_config(self, config_path: Union[str, Path]) -> Dict[str, Any]:
+    def load_config(self, config_path: Union[str, Path]) -> [str, Any]:
         """
         Load MCP configuration from a JSON file.
 
@@ -225,7 +225,7 @@ class MCPPluginManager:
             config_path: Path to the configuration file
 
         Returns:
-            Dict[str, Any]: Loaded configuration
+            [str, Any]: Loaded configuration
 
         Raises:
             FileNotFoundError: If configuration file doesn't exist
@@ -248,7 +248,7 @@ class MCPPluginManager:
             raise
 
     def save_config(
-        self, config: Dict[str, Any], config_path: Union[str, Path]
+        self, config: [str, Any], config_path: Union[str, Path]
     ) -> None:
         """
         Save MCP configuration to a JSON file.
@@ -270,12 +270,12 @@ class MCPPluginManager:
             self.logger.error(f"Failed to save configuration to {config_path}: {e}")
             raise
 
-    def discover_hosts(self) -> Dict[str, Dict[str, Any]]:
+    def discover_hosts(self) -> [str, [str, Any]]:
         """
         Discover all available MCP hosts and their information.
 
         Returns:
-            Dict[str, Dict[str, Any]]: Dictionary mapping host names to their info
+            [str, [str, Any]]: ionary mapping host names to their info
         """
         return discover_available_hosts()
 
@@ -288,7 +288,7 @@ class MCPPluginManager:
         """
         export_all_config_templates(str(output_path))
 
-    def get_hosts_by_capability(self, capability: str) -> List[str]:
+    def get_hosts_by_capability(self, capability: str) -> [str]:
         """
         Get hosts that support a specific capability.
 
@@ -296,7 +296,7 @@ class MCPPluginManager:
             capability: Capability name (e.g., 'supports_tools', 'supports_resources')
 
         Returns:
-            List[str]: List of host names that support the capability
+            [str]:  of host names that support the capability
         """
         matching_hosts = []
 
@@ -308,7 +308,7 @@ class MCPPluginManager:
 
         return matching_hosts
 
-    def get_hosts_by_transport(self, transport_type: str) -> List[str]:
+    def get_hosts_by_transport(self, transport_type: str) -> [str]:
         """
         Get hosts that support a specific transport type.
 
@@ -316,7 +316,7 @@ class MCPPluginManager:
             transport_type: Transport type (e.g., 'stdio', 'http')
 
         Returns:
-            List[str]: List of host names that support the transport type
+            [str]:  of host names that support the transport type
         """
         matching_hosts = []
 
@@ -329,7 +329,7 @@ class MCPPluginManager:
 
     def create_host_config(
         self, host_name: str, **overrides
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[[str, Any]]:
         """
         Create a configuration for a specific host with optional overrides.
 
@@ -338,7 +338,7 @@ class MCPPluginManager:
             **overrides: Configuration values to override
 
         Returns:
-            Dict[str, Any]: Generated configuration, or None if host not found
+            [str, Any]: Generated configuration, or None if host not found
         """
         plugin = get_host_plugin(host_name)
         if not plugin:

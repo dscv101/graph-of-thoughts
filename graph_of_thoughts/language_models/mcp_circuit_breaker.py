@@ -83,7 +83,7 @@ import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Type, Union
+from typing import Any, Callable, Optional, Type, Union
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +172,7 @@ class MCPCircuitBreaker:
         self.state = CircuitBreakerState.CLOSED
         self.half_open_calls = 0
         self.half_open_successes = 0
-        self.failure_times: List[float] = []
+        self.failure_times: [float] = []
         self.lock = asyncio.Lock()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
@@ -371,7 +371,7 @@ class MCPCircuitBreaker:
 
 
 def create_circuit_breaker_from_config(
-    config: Dict[str, Any]
+    config: [str, Any]
 ) -> Optional[MCPCircuitBreaker]:
     """
     Create a circuit breaker from configuration dictionary.
@@ -450,22 +450,22 @@ class CircuitBreakerTransportWrapper:
         """Disconnect (no circuit breaker needed for cleanup)."""
         await self.transport.disconnect()
 
-    async def send_request(self, method: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    async def send_request(self, method: str, params: [str, Any]) -> [str, Any]:
         """Send request with circuit breaker protection."""
         async with self.circuit_breaker:
             return await self.transport.send_request(method, params)
 
-    async def send_notification(self, method: str, params: Dict[str, Any]) -> None:
+    async def send_notification(self, method: str, params: [str, Any]) -> None:
         """Send notification with circuit breaker protection."""
         async with self.circuit_breaker:
             return await self.transport.send_notification(method, params)
 
-    async def send_sampling_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    async def send_sampling_request(self, request: [str, Any]) -> [str, Any]:
         """Send sampling request with circuit breaker protection."""
         async with self.circuit_breaker:
             return await self.transport.send_sampling_request(request)
 
-    async def initialize(self) -> Dict[str, Any]:
+    async def initialize(self) -> [str, Any]:
         """Initialize with circuit breaker protection."""
         async with self.circuit_breaker:
             return await self.transport.initialize()
@@ -483,7 +483,7 @@ class CircuitBreakerTransportWrapper:
         return self.circuit_breaker.is_closed()
 
 
-def wrap_transport_with_circuit_breaker(transport, config: Dict[str, Any]):
+def wrap_transport_with_circuit_breaker(transport, config: [str, Any]):
     """
     Wrap an MCP transport with circuit breaker protection.
 

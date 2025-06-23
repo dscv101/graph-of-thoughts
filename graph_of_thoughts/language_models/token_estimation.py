@@ -28,7 +28,7 @@ used by modern language models like GPT, Claude, and others.
 import logging
 import re
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Optional, 
 
 logger = logging.getLogger(__name__)
 
@@ -154,14 +154,14 @@ class TokenEstimator:
 
         return total_tokens
 
-    def _analyze_text(self, text: str) -> Dict:
+    def _analyze_text(self, text: str) -> :
         """
         Analyze text patterns for better token estimation.
 
         :param text: Text to analyze
         :type text: str
         :return: Analysis results
-        :rtype: Dict
+        :rtype: 
         """
         # Basic counts
         words = self._word_pattern.findall(text)
@@ -193,12 +193,12 @@ class TokenEstimator:
             "avg_word_length": sum(len(w) for w in words) / len(words) if words else 0,
         }
 
-    def _calculate_base_tokens(self, analysis: Dict) -> float:
+    def _calculate_base_tokens(self, analysis: ) -> float:
         """
         Calculate base token estimate from text analysis.
 
         :param analysis: Text analysis results
-        :type analysis: Dict
+        :type analysis: 
         :return: Base token estimate
         :rtype: float
         """
@@ -231,7 +231,7 @@ class TokenEstimator:
         return base_tokens
 
     def _apply_context_adjustments(
-        self, base_tokens: float, analysis: Dict, context: str
+        self, base_tokens: float, analysis: , context: str
     ) -> float:
         """
         Apply context-specific adjustments to token estimate.
@@ -239,7 +239,7 @@ class TokenEstimator:
         :param base_tokens: Base token estimate
         :type base_tokens: float
         :param analysis: Text analysis results
-        :type analysis: Dict
+        :type analysis: 
         :param context: Context hint
         :type context: str
         :return: Adjusted token estimate

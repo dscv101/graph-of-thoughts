@@ -175,7 +175,7 @@ import os
 import shutil
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, TypedDict, Union
+from typing import Any, Optional, Typed, Union
 
 
 class MCPTransportType(Enum):
@@ -193,29 +193,29 @@ class MCPIncludeContext(Enum):
     ALL_SERVERS = "allServers"
 
 
-class MCPClientInfo(TypedDict):
+class MCPClientInfo(Typed):
     """MCP client information structure."""
 
     name: str
     version: str
 
 
-class MCPModelHint(TypedDict):
+class MCPModelHint(Typed):
     """Model hint structure for model preferences."""
 
     name: str
 
 
-class MCPModelPreferences(TypedDict, total=False):
+class MCPModelPreferences(Typed, total=False):
     """Model preferences structure for sampling requests."""
 
-    hints: List[MCPModelHint]
+    hints: [MCPModelHint]
     costPriority: float
     speedPriority: float
     intelligencePriority: float
 
 
-class MCPMessageContent(TypedDict, total=False):
+class MCPMessageContent(Typed, total=False):
     """Content structure for MCP messages."""
 
     type: str
@@ -224,27 +224,27 @@ class MCPMessageContent(TypedDict, total=False):
     mimeType: str
 
 
-class MCPMessage(TypedDict):
+class MCPMessage(Typed):
     """Message structure for MCP conversations."""
 
     role: str  # "user" or "assistant"
     content: MCPMessageContent
 
 
-class MCPSamplingRequest(TypedDict, total=False):
+class MCPSamplingRequest(Typed, total=False):
     """MCP sampling request structure according to the specification."""
 
-    messages: List[MCPMessage]
+    messages: [MCPMessage]
     maxTokens: int
     modelPreferences: MCPModelPreferences
     systemPrompt: str
     includeContext: str
     temperature: float
-    stopSequences: List[str]
-    metadata: Dict[str, Any]
+    stopSequences: [str]
+    metadata: [str, Any]
 
 
-class MCPSamplingResponse(TypedDict, total=False):
+class MCPSamplingResponse(Typed, total=False):
     """MCP sampling response structure."""
 
     model: str
@@ -259,12 +259,12 @@ class MCPProtocolValidator:
     def __init__(self) -> None:
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def validate_client_info(self, client_info: Dict[str, Any]) -> bool:
+    def validate_client_info(self, client_info: [str, Any]) -> bool:
         """
         Validate client information structure.
 
         :param client_info: Client info dictionary
-        :type client_info: Dict[str, Any]
+        :type client_info: [str, Any]
         :return: True if valid, False otherwise
         :rtype: bool
         """
@@ -275,12 +275,12 @@ class MCPProtocolValidator:
                 return False
         return True
 
-    def validate_transport_config(self, transport: Dict[str, Any]) -> bool:
+    def validate_transport_config(self, transport: [str, Any]) -> bool:
         """
         Validate transport configuration.
 
         :param transport: Transport configuration dictionary
-        :type transport: Dict[str, Any]
+        :type transport: [str, Any]
         :return: True if valid, False otherwise
         :rtype: bool
         """
@@ -300,7 +300,7 @@ class MCPProtocolValidator:
 
         return False
 
-    def _validate_stdio_transport(self, transport: Dict[str, Any]) -> bool:
+    def _validate_stdio_transport(self, transport: [str, Any]) -> bool:
         """Validate stdio transport configuration."""
         required_fields = ["command"]
         for field in required_fields:
@@ -309,7 +309,7 @@ class MCPProtocolValidator:
                 return False
         return True
 
-    def _validate_http_transport(self, transport: Dict[str, Any]) -> bool:
+    def _validate_http_transport(self, transport: [str, Any]) -> bool:
         """Validate HTTP transport configuration."""
         required_fields = ["url"]
         for field in required_fields:
@@ -318,12 +318,12 @@ class MCPProtocolValidator:
                 return False
         return True
 
-    def validate_model_preferences(self, preferences: Dict[str, Any]) -> bool:
+    def validate_model_preferences(self, preferences: [str, Any]) -> bool:
         """
         Validate model preferences structure.
 
         :param preferences: Model preferences dictionary
-        :type preferences: Dict[str, Any]
+        :type preferences: [str, Any]
         :return: True if valid, False otherwise
         :rtype: bool
         """
@@ -351,12 +351,12 @@ class MCPProtocolValidator:
 
         return True
 
-    def validate_sampling_request(self, request: Dict[str, Any]) -> bool:
+    def validate_sampling_request(self, request: [str, Any]) -> bool:
         """
         Validate sampling request structure.
 
         :param request: Sampling request dictionary
-        :type request: Dict[str, Any]
+        :type request: [str, Any]
         :return: True if valid, False otherwise
         :rtype: bool
         """
@@ -393,7 +393,7 @@ class MCPProtocolValidator:
 
         return True
 
-    def _validate_message(self, message: Dict[str, Any]) -> bool:
+    def _validate_message(self, message: [str, Any]) -> bool:
         """Validate individual message structure."""
         required_fields = ["role", "content"]
         for field in required_fields:
@@ -429,12 +429,12 @@ class MCPProtocolValidator:
 
         return True
 
-    def validate_configuration(self, config: Dict[str, Any]) -> bool:
+    def validate_configuration(self, config: [str, Any]) -> bool:
         """
         Validate complete MCP configuration.
 
         :param config: Configuration dictionary
-        :type config: Dict[str, Any]
+        :type config: [str, Any]
         :return: True if valid, False otherwise
         :rtype: bool
         """
@@ -468,22 +468,22 @@ class MCPProtocolValidator:
 
 
 def create_sampling_request(
-    messages: List[Dict[str, Any]],
-    model_preferences: Optional[Dict[str, Any]] = None,
+    messages: [[str, Any]],
+    model_preferences: Optional[[str, Any]] = None,
     system_prompt: Optional[str] = None,
     include_context: str = "none",
     temperature: Optional[float] = None,
     max_tokens: int = 1000,
-    stop_sequences: Optional[List[str]] = None,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    stop_sequences: Optional[[str]] = None,
+    metadata: Optional[[str, Any]] = None,
+) -> [str, Any]:
     """
     Create a properly formatted MCP sampling request.
 
-    :param messages: List of conversation messages
-    :type messages: List[Dict[str, Any]]
+    :param messages:  of conversation messages
+    :type messages: [[str, Any]]
     :param model_preferences: Model selection preferences
-    :type model_preferences: Optional[Dict[str, Any]]
+    :type model_preferences: Optional[[str, Any]]
     :param system_prompt: Optional system prompt
     :type system_prompt: Optional[str]
     :param include_context: Context inclusion setting
@@ -493,11 +493,11 @@ def create_sampling_request(
     :param max_tokens: Maximum tokens to generate
     :type max_tokens: int
     :param stop_sequences: Stop sequences
-    :type stop_sequences: Optional[List[str]]
+    :type stop_sequences: Optional[[str]]
     :param metadata: Additional metadata
-    :type metadata: Optional[Dict[str, Any]]
+    :type metadata: Optional[[str, Any]]
     :return: Formatted sampling request
-    :rtype: Dict[str, Any]
+    :rtype: [str, Any]
     """
     request = {
         "messages": messages,
@@ -519,7 +519,7 @@ def create_sampling_request(
     return request
 
 
-def create_text_message(role: str, text: str) -> Dict[str, Any]:
+def create_text_message(role: str, text: str) -> [str, Any]:
     """
     Create a properly formatted MCP text message.
 
@@ -528,12 +528,12 @@ def create_text_message(role: str, text: str) -> Dict[str, Any]:
     :param text: Message text content
     :type text: str
     :return: Formatted message
-    :rtype: Dict[str, Any]
+    :rtype: [str, Any]
     """
     return {"role": role, "content": {"type": "text", "text": text}}
 
 
-def create_image_message(role: str, data: str, mime_type: str) -> Dict[str, Any]:
+def create_image_message(role: str, data: str, mime_type: str) -> [str, Any]:
     """
     Create a properly formatted MCP image message.
 
@@ -544,7 +544,7 @@ def create_image_message(role: str, data: str, mime_type: str) -> Dict[str, Any]
     :param mime_type: MIME type of the image
     :type mime_type: str
     :return: Formatted message
-    :rtype: Dict[str, Any]
+    :rtype: [str, Any]
     """
     return {
         "role": role,
@@ -611,7 +611,7 @@ class MCPConfigurationError(Exception):
     """Exception raised for MCP configuration errors."""
 
     def __init__(
-        self, message: str, field_path: str = "", validation_errors: List[str] = None
+        self, message: str, field_path: str = "", validation_errors: [str] = None
     ):
         """
         Initialize configuration error with detailed context.
@@ -620,8 +620,8 @@ class MCPConfigurationError(Exception):
         :type message: str
         :param field_path: Path to the problematic field (e.g., "transport.command")
         :type field_path: str
-        :param validation_errors: List of specific validation errors
-        :type validation_errors: List[str]
+        :param validation_errors:  of specific validation errors
+        :type validation_errors: [str]
         """
         super().__init__(message)
         self.field_path = field_path
@@ -685,8 +685,8 @@ class MCPConfigurationValidator:
         self.strict_mode = strict_mode
         self.enable_security_checks = enable_security_checks
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.validation_errors: List[str] = []
-        self.validation_warnings: List[str] = []
+        self.validation_errors: [str] = []
+        self.validation_warnings: [str] = []
 
     def validate_startup_configuration(self, config_path: str) -> bool:
         """
@@ -758,13 +758,13 @@ class MCPConfigurationValidator:
             )
 
     def _validate_model_configuration(
-        self, config: Dict[str, Any], model_name: str
+        self, config: [str, Any], model_name: str
     ) -> None:
         """
         Validate a single model configuration.
 
         :param config: Model configuration dictionary
-        :type config: Dict[str, Any]
+        :type config: [str, Any]
         :param model_name: Name of the model configuration
         :type model_name: str
         :raises MCPConfigurationError: If configuration is invalid
@@ -806,12 +806,12 @@ class MCPConfigurationValidator:
         if self.enable_security_checks:
             self._validate_security_configuration(config)
 
-    def _validate_transport_section(self, transport: Dict[str, Any]) -> None:
+    def _validate_transport_section(self, transport: [str, Any]) -> None:
         """
         Validate transport configuration section.
 
         :param transport: Transport configuration
-        :type transport: Dict[str, Any]
+        :type transport: [str, Any]
         :raises MCPConfigurationError: If transport configuration is invalid
         """
         if not isinstance(transport, dict):
@@ -838,12 +838,12 @@ class MCPConfigurationValidator:
         elif transport_type == "http":
             self._validate_http_transport(transport)
 
-    def _validate_stdio_transport(self, transport: Dict[str, Any]) -> None:
+    def _validate_stdio_transport(self, transport: [str, Any]) -> None:
         """
         Validate stdio transport configuration.
 
         :param transport: Transport configuration
-        :type transport: Dict[str, Any]
+        :type transport: [str, Any]
         :raises MCPConfigurationError: If stdio transport configuration is invalid
         """
         # Check required fields
@@ -896,12 +896,12 @@ class MCPConfigurationValidator:
         if self.enable_security_checks:
             self._validate_stdio_security(transport)
 
-    def _validate_http_transport(self, transport: Dict[str, Any]) -> None:
+    def _validate_http_transport(self, transport: [str, Any]) -> None:
         """
         Validate HTTP transport configuration.
 
         :param transport: Transport configuration
-        :type transport: Dict[str, Any]
+        :type transport: [str, Any]
         :raises MCPConfigurationError: If HTTP transport configuration is invalid
         """
         # Check required fields
@@ -966,12 +966,12 @@ class MCPConfigurationValidator:
         if self.enable_security_checks:
             self._validate_http_security(transport)
 
-    def _validate_client_info_section(self, client_info: Dict[str, Any]) -> None:
+    def _validate_client_info_section(self, client_info: [str, Any]) -> None:
         """
         Validate client_info configuration section.
 
         :param client_info: Client info configuration
-        :type client_info: Dict[str, Any]
+        :type client_info: [str, Any]
         :raises MCPConfigurationError: If client_info configuration is invalid
         """
         if not isinstance(client_info, dict):
@@ -1010,12 +1010,12 @@ class MCPConfigurationValidator:
                 f"Version '{version}' does not follow semantic versioning format"
             )
 
-    def _validate_capabilities_section(self, capabilities: Dict[str, Any]) -> None:
+    def _validate_capabilities_section(self, capabilities: [str, Any]) -> None:
         """
         Validate capabilities configuration section.
 
         :param capabilities: Capabilities configuration
-        :type capabilities: Dict[str, Any]
+        :type capabilities: [str, Any]
         :raises MCPConfigurationError: If capabilities configuration is invalid
         """
         if not isinstance(capabilities, dict):
@@ -1035,12 +1035,12 @@ class MCPConfigurationValidator:
                     field_path=f"capabilities.{cap_name}",
                 )
 
-    def _validate_sampling_params_section(self, params: Dict[str, Any]) -> None:
+    def _validate_sampling_params_section(self, params: [str, Any]) -> None:
         """
         Validate default_sampling_params configuration section.
 
         :param params: Sampling parameters configuration
-        :type params: Dict[str, Any]
+        :type params: [str, Any]
         :raises MCPConfigurationError: If sampling parameters configuration is invalid
         """
         if not isinstance(params, dict):
@@ -1097,12 +1097,12 @@ class MCPConfigurationValidator:
         if "modelPreferences" in params:
             self._validate_model_preferences(params["modelPreferences"])
 
-    def _validate_model_preferences(self, prefs: Dict[str, Any]) -> None:
+    def _validate_model_preferences(self, prefs: [str, Any]) -> None:
         """
         Validate model preferences configuration.
 
         :param prefs: Model preferences configuration
-        :type prefs: Dict[str, Any]
+        :type prefs: [str, Any]
         :raises MCPConfigurationError: If model preferences configuration is invalid
         """
         if not isinstance(prefs, dict):
@@ -1144,12 +1144,12 @@ class MCPConfigurationValidator:
                         field_path=f"default_sampling_params.modelPreferences.{field}",
                     )
 
-    def _validate_connection_config_section(self, config: Dict[str, Any]) -> None:
+    def _validate_connection_config_section(self, config: [str, Any]) -> None:
         """
         Validate connection_config configuration section.
 
         :param config: Connection configuration
-        :type config: Dict[str, Any]
+        :type config: [str, Any]
         :raises MCPConfigurationError: If connection configuration is invalid
         """
         if not isinstance(config, dict):
@@ -1182,12 +1182,12 @@ class MCPConfigurationValidator:
                     "High retry_attempts value may cause long delays on failures"
                 )
 
-    def _validate_cost_tracking_section(self, config: Dict[str, Any]) -> None:
+    def _validate_cost_tracking_section(self, config: [str, Any]) -> None:
         """
         Validate cost_tracking configuration section.
 
         :param config: Cost tracking configuration
-        :type config: Dict[str, Any]
+        :type config: [str, Any]
         :raises MCPConfigurationError: If cost tracking configuration is invalid
         """
         if not isinstance(config, dict):
@@ -1206,12 +1206,12 @@ class MCPConfigurationValidator:
                         field_path=f"cost_tracking.{field}",
                     )
 
-    def _validate_metrics_section(self, config: Dict[str, Any]) -> None:
+    def _validate_metrics_section(self, config: [str, Any]) -> None:
         """
         Validate metrics configuration section.
 
         :param config: Metrics configuration
-        :type config: Dict[str, Any]
+        :type config: [str, Any]
         :raises MCPConfigurationError: If metrics configuration is invalid
         """
         if not isinstance(config, dict):
@@ -1264,12 +1264,12 @@ class MCPConfigurationValidator:
                     field_path="metrics.export_file",
                 )
 
-    def _validate_security_configuration(self, config: Dict[str, Any]) -> None:
+    def _validate_security_configuration(self, config: [str, Any]) -> None:
         """
         Validate security aspects of the configuration.
 
         :param config: Full model configuration
-        :type config: Dict[str, Any]
+        :type config: [str, Any]
         """
         transport = config.get("transport", {})
         transport_type = transport.get("type")
@@ -1279,12 +1279,12 @@ class MCPConfigurationValidator:
         elif transport_type == "http":
             self._validate_http_security(transport)
 
-    def _validate_stdio_security(self, transport: Dict[str, Any]) -> None:
+    def _validate_stdio_security(self, transport: [str, Any]) -> None:
         """
         Validate security aspects of stdio transport.
 
         :param transport: Transport configuration
-        :type transport: Dict[str, Any]
+        :type transport: [str, Any]
         """
         command = transport.get("command", "")
 
@@ -1329,12 +1329,12 @@ class MCPConfigurationValidator:
                     f"Environment variable '{env_key}' may contain sensitive data"
                 )
 
-    def _validate_http_security(self, transport: Dict[str, Any]) -> None:
+    def _validate_http_security(self, transport: [str, Any]) -> None:
         """
         Validate security aspects of HTTP transport.
 
         :param transport: Transport configuration
-        :type transport: Dict[str, Any]
+        :type transport: [str, Any]
         """
         url = transport.get("url", "")
 
@@ -1379,13 +1379,13 @@ class MCPConfigurationValidator:
         return bool(re.match(semver_pattern, version))
 
     def validate_runtime_configuration(
-        self, config: Dict[str, Any], model_name: str
+        self, config: [str, Any], model_name: str
     ) -> bool:
         """
         Validate configuration at runtime with additional checks.
 
         :param config: Model configuration to validate
-        :type config: Dict[str, Any]
+        :type config: [str, Any]
         :param model_name: Name of the model configuration
         :type model_name: str
         :return: True if configuration is valid
@@ -1405,12 +1405,12 @@ class MCPConfigurationValidator:
         except Exception as e:
             raise MCPConfigurationError(f"Runtime validation failed: {e}")
 
-    def _validate_runtime_connectivity(self, config: Dict[str, Any]) -> None:
+    def _validate_runtime_connectivity(self, config: [str, Any]) -> None:
         """
         Validate connectivity aspects at runtime.
 
         :param config: Model configuration
-        :type config: Dict[str, Any]
+        :type config: [str, Any]
         """
         transport = config.get("transport", {})
         transport_type = transport.get("type")
@@ -1429,12 +1429,12 @@ class MCPConfigurationValidator:
             # during validation to keep it fast and avoid side effects
             pass
 
-    def _validate_runtime_permissions(self, config: Dict[str, Any]) -> None:
+    def _validate_runtime_permissions(self, config: [str, Any]) -> None:
         """
         Validate permission aspects at runtime.
 
         :param config: Model configuration
-        :type config: Dict[str, Any]
+        :type config: [str, Any]
         """
         # Check if metrics export file is writable
         metrics = config.get("metrics", {})
@@ -1451,14 +1451,14 @@ class MCPConfigurationValidator:
                     f"Metrics export directory is not writable: {export_dir}"
                 )
 
-    def get_configuration_summary(self, config_path: str) -> Dict[str, Any]:
+    def get_configuration_summary(self, config_path: str) -> [str, Any]:
         """
         Get a summary of the configuration for debugging and monitoring.
 
         :param config_path: Path to the configuration file
         :type config_path: str
         :return: Configuration summary
-        :rtype: Dict[str, Any]
+        :rtype: [str, Any]
         """
         try:
             with open(config_path, "r", encoding="utf-8") as f:

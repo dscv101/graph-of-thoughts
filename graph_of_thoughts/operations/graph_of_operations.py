@@ -8,7 +8,6 @@
 
 from __future__ import annotations
 
-from typing import List
 
 from graph_of_thoughts.operations.operations import Operation
 
@@ -24,9 +23,9 @@ class GraphOfOperations:
         The roots are the entry points in the graph with no predecessors.
         The leaves are the exit points in the graph with no successors.
         """
-        self.operations: List[Operation] = []
-        self.roots: List[Operation] = []
-        self.leaves: List[Operation] = []
+        self.operations: [Operation] = []
+        self.roots: [Operation] = []
+        self.leaves: [Operation] = []
 
     def append_operation(self, operation: Operation) -> None:
         """

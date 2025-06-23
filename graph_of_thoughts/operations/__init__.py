@@ -10,8 +10,28 @@ from .operations import (
     KeepBestN,
     KeepValid,
     Operation,
+    OperationType,
     Score,
     Selector,
     ValidateAndImprove,
 )
 from .thought import Thought
+
+__all__ = [
+    "GraphOfOperations",
+    "Operation",
+    "OperationType",
+    "Aggregate",
+    "BatchAggregate",
+    "BatchGenerate",
+    "BatchScore",
+    "Generate",
+    "GroundTruth",
+    "Improve",
+    "KeepBestN",
+    "KeepValid",
+    "Score",
+    "Selector",
+    "ValidateAndImprove",
+    "Thought",
+]

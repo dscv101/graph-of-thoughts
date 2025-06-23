@@ -63,7 +63,7 @@ import sys
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 # MCP SDK imports
 import mcp.types as types
@@ -106,9 +106,9 @@ class GraphOfThoughtsServer:
     def __init__(self):
         """Initialize the Graph of Thoughts MCP server."""
         self.server = Server(SERVER_NAME)
-        self.execution_results: Dict[str, Any] = {}
-        self.active_operations: Dict[str, GraphOfOperations] = {}
-        self.prompt_templates: Dict[str, Dict[str, Any]] = {}
+        self.execution_results: [str, Any] = {}
+        self.active_operations: [str, GraphOfOperations] = {}
+        self.prompt_templates: [str, [str, Any]] = {}
 
         # Initialize prompt templates
         self._initialize_prompt_templates()
@@ -159,7 +159,7 @@ class GraphOfThoughtsServer:
                 "arguments": [
                     {
                         "name": "options",
-                        "description": "List of options to evaluate",
+                        "description": " of options to evaluate",
                         "required": True,
                     },
                     {
@@ -175,8 +175,8 @@ class GraphOfThoughtsServer:
         """Register MCP tools for Graph of Thoughts operations."""
 
         @self.server.list_tools()
-        async def list_tools() -> List[types.Tool]:
-            """List all available Graph of Thoughts tools."""
+        async def list_tools() -> [types.Tool]:
+            """ all available Graph of Thoughts tools."""
             return [
                 types.Tool(
                     name="break_down_task",
@@ -235,7 +235,7 @@ class GraphOfThoughtsServer:
                             "thoughts": {
                                 "type": "array",
                                 "items": {"type": "string"},
-                                "description": "List of thoughts to score",
+                                "description": " of thoughts to score",
                             },
                             "criteria": {
                                 "type": "string",
@@ -279,7 +279,7 @@ class GraphOfThoughtsServer:
                             "results": {
                                 "type": "array",
                                 "items": {"type": "string"},
-                                "description": "List of results to aggregate",
+                                "description": " of results to aggregate",
                             },
                             "aggregation_method": {
                                 "type": "string",
@@ -318,8 +318,8 @@ class GraphOfThoughtsServer:
 
         @self.server.call_tool()
         async def call_tool(
-            name: str, arguments: Dict[str, Any]
-        ) -> List[types.TextContent]:
+            name: str, arguments: [str, Any]
+        ) -> [types.TextContent]:
             """Handle tool execution requests."""
             try:
                 if name == "break_down_task":
@@ -345,8 +345,8 @@ class GraphOfThoughtsServer:
                 ]
 
     async def _break_down_task(
-        self, arguments: Dict[str, Any]
-    ) -> List[types.TextContent]:
+        self, arguments: [str, Any]
+    ) -> [types.TextContent]:
         """Break down a complex task into subtasks."""
         # Validate required parameters
         if "task" not in arguments:
@@ -430,8 +430,8 @@ class GraphOfThoughtsServer:
         return [types.TextContent(type="text", text=response_text)]
 
     async def _generate_thoughts(
-        self, arguments: Dict[str, Any]
-    ) -> List[types.TextContent]:
+        self, arguments: [str, Any]
+    ) -> [types.TextContent]:
         """Generate multiple thought approaches for a problem."""
         # Validate required parameters
         if "problem" not in arguments:
@@ -515,8 +515,8 @@ class GraphOfThoughtsServer:
         return [types.TextContent(type="text", text=response_text)]
 
     async def _score_thoughts(
-        self, arguments: Dict[str, Any]
-    ) -> List[types.TextContent]:
+        self, arguments: [str, Any]
+    ) -> [types.TextContent]:
         """Score and evaluate different thoughts."""
         # Validate required parameters
         if "thoughts" not in arguments:
@@ -630,8 +630,8 @@ class GraphOfThoughtsServer:
         return [types.TextContent(type="text", text=response_text)]
 
     async def _validate_and_improve(
-        self, arguments: Dict[str, Any]
-    ) -> List[types.TextContent]:
+        self, arguments: [str, Any]
+    ) -> [types.TextContent]:
         """Validate and improve a solution iteratively."""
         solution = arguments["solution"]
         validation_criteria = arguments.get(
@@ -733,8 +733,8 @@ class GraphOfThoughtsServer:
         return [types.TextContent(type="text", text=response_text)]
 
     async def _aggregate_results(
-        self, arguments: Dict[str, Any]
-    ) -> List[types.TextContent]:
+        self, arguments: [str, Any]
+    ) -> [types.TextContent]:
         """Aggregate multiple results into a final solution."""
         results = arguments["results"]
         aggregation_method = arguments.get("aggregation_method", "synthesis")
@@ -799,8 +799,8 @@ class GraphOfThoughtsServer:
         return [types.TextContent(type="text", text=response_text)]
 
     async def _create_reasoning_chain(
-        self, arguments: Dict[str, Any]
-    ) -> List[types.TextContent]:
+        self, arguments: [str, Any]
+    ) -> [types.TextContent]:
         """Create a complete reasoning workflow."""
         problem = arguments["problem"]
         workflow_type = arguments.get("workflow_type", "generate_score_select")
@@ -939,8 +939,8 @@ class GraphOfThoughtsServer:
         """Register MCP resources for accessing Graph of Thoughts data."""
 
         @self.server.list_resources()
-        async def list_resources() -> List[types.Resource]:
-            """List all available Graph of Thoughts resources."""
+        async def list_resources() -> [types.Resource]:
+            """ all available Graph of Thoughts resources."""
             return [
                 types.Resource(
                     uri="got://operations/results",
@@ -1013,8 +1013,8 @@ class GraphOfThoughtsServer:
         """Register MCP prompts for Graph of Thoughts workflows."""
 
         @self.server.list_prompts()
-        async def list_prompts() -> List[types.Prompt]:
-            """List all available Graph of Thoughts prompts."""
+        async def list_prompts() -> [types.Prompt]:
+            """ all available Graph of Thoughts prompts."""
             return [
                 types.Prompt(
                     name=template["name"],
@@ -1033,7 +1033,7 @@ class GraphOfThoughtsServer:
 
         @self.server.get_prompt()
         async def get_prompt(
-            name: str, arguments: Optional[Dict[str, str]] = None
+            name: str, arguments: Optional[[str, str]] = None
         ) -> types.GetPromptResult:
             """Get a specific Graph of Thoughts prompt."""
             if name not in self.prompt_templates:

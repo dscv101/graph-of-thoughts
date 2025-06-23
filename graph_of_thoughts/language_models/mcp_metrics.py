@@ -98,7 +98,7 @@ from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from threading import Lock
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +126,7 @@ class MetricValue:
 
     value: Union[int, float]
     timestamp: float = field(default_factory=time.time)
-    labels: Dict[str, str] = field(default_factory=dict)
+    labels: [str, str] = field(default_factory=dict)
     metric_type: MetricType = MetricType.GAUGE
 
 
@@ -151,7 +151,7 @@ class RequestMetrics:
     success: bool = True
     error_type: Optional[str] = None
     response_size: int = 0
-    token_usage: Dict[str, int] = field(default_factory=dict)
+    token_usage: [str, int] = field(default_factory=dict)
 
     @property
     def duration_ms(self) -> float:
@@ -220,7 +220,7 @@ class RequestTracker:
 
         self.metrics_collector._record_request(self.request_metrics)
 
-    def record_success(self, response: Optional[Dict[str, Any]] = None):
+    def record_success(self, response: Optional[[str, Any]] = None):
         """
         Record successful request completion.
 
@@ -262,7 +262,7 @@ class MCPMetricsCollector:
     MCP client performance and health.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[[str, Any]] = None):
         """
         Initialize the metrics collector.
 
@@ -283,14 +283,14 @@ class MCPMetricsCollector:
 
         # Request history and current metrics
         self.request_history: deque = deque(maxlen=self.max_history_size)
-        self.method_metrics: Dict[str, List[RequestMetrics]] = defaultdict(list)
-        self.error_counts: Dict[str, int] = defaultdict(int)
+        self.method_metrics: [str, [RequestMetrics]] = defaultdict(list)
+        self.error_counts: [str, int] = defaultdict(int)
 
         # Custom metrics
-        self.custom_metrics: Dict[str, List[MetricValue]] = defaultdict(list)
+        self.custom_metrics: [str, [MetricValue]] = defaultdict(list)
 
         # Export configuration
-        self.export_callbacks: List[Callable] = []
+        self.export_callbacks: [Callable] = []
         self.last_export_time = time.time()
 
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
@@ -358,7 +358,7 @@ class MCPMetricsCollector:
         name: str,
         value: Union[int, float],
         metric_type: MetricType = MetricType.GAUGE,
-        labels: Optional[Dict[str, str]] = None,
+        labels: Optional[[str, str]] = None,
     ):
         """
         Record a custom metric value.
@@ -384,12 +384,12 @@ class MCPMetricsCollector:
             if len(metric_list) > self.max_history_size:
                 metric_list.pop(0)
 
-    def get_current_metrics(self) -> Dict[str, Any]:
+    def get_current_metrics(self) -> [str, Any]:
         """
         Get current aggregated metrics.
 
         Returns:
-            Dictionary containing current metrics
+            ionary containing current metrics
         """
         if not self.enabled:
             return {}
@@ -461,7 +461,7 @@ class MCPMetricsCollector:
                 "custom_metrics": self._get_custom_metrics_summary(),
             }
 
-    def _empty_metrics(self) -> Dict[str, Any]:
+    def _empty_metrics(self) -> [str, Any]:
         """Return empty metrics structure."""
         return {
             "timestamp": time.time(),
@@ -480,7 +480,7 @@ class MCPMetricsCollector:
             "custom_metrics": {},
         }
 
-    def _get_custom_metrics_summary(self) -> Dict[str, Any]:
+    def _get_custom_metrics_summary(self) -> [str, Any]:
         """Get summary of custom metrics."""
         summary = {}
         for name, values in self.custom_metrics.items():
@@ -495,7 +495,7 @@ class MCPMetricsCollector:
                 }
         return summary
 
-    def get_method_metrics(self, method: str) -> Dict[str, Any]:
+    def get_method_metrics(self, method: str) -> [str, Any]:
         """
         Get metrics for a specific MCP method.
 
@@ -503,7 +503,7 @@ class MCPMetricsCollector:
             method: The MCP method name
 
         Returns:
-            Dictionary containing method-specific metrics
+            ionary containing method-specific metrics
         """
         if not self.enabled or method not in self.method_metrics:
             return {}
@@ -536,12 +536,12 @@ class MCPMetricsCollector:
                 ],
             }
 
-    def get_error_summary(self) -> Dict[str, Any]:
+    def get_error_summary(self) -> [str, Any]:
         """
         Get summary of errors encountered.
 
         Returns:
-            Dictionary containing error statistics
+            ionary containing error statistics
         """
         if not self.enabled:
             return {}
@@ -597,7 +597,7 @@ class MCPMetricsCollector:
             self.logger.warning(f"Unknown export format: {export_format}, using JSON")
             return json.dumps(metrics, indent=2)
 
-    def _export_prometheus_format(self, metrics: Dict[str, Any]) -> str:
+    def _export_prometheus_format(self, metrics: [str, Any]) -> str:
         """Export metrics in Prometheus format."""
         lines = []
         timestamp = int(metrics["timestamp"] * 1000)  # Prometheus uses milliseconds
@@ -646,7 +646,7 @@ class MCPMetricsCollector:
 
         return "\n".join(lines)
 
-    def _export_csv_format(self, metrics: Dict[str, Any]) -> str:
+    def _export_csv_format(self, metrics: [str, Any]) -> str:
         """Export metrics in CSV format."""
         lines = ["timestamp,metric_name,value,labels"]
         timestamp = metrics["timestamp"]
@@ -668,7 +668,7 @@ class MCPMetricsCollector:
 
         return "\n".join(lines)
 
-    def add_export_callback(self, callback: Callable[[Dict[str, Any]], None]):
+    def add_export_callback(self, callback: Callable[[[str, Any]], None]):
         """
         Add a callback function to be called when metrics are exported.
 
@@ -716,12 +716,12 @@ class MCPMetricsCollector:
 
         self.logger.info("Metrics reset")
 
-    def get_health_status(self) -> Dict[str, Any]:
+    def get_health_status(self) -> [str, Any]:
         """
         Get overall health status based on metrics.
 
         Returns:
-            Dictionary containing health assessment
+            ionary containing health assessment
         """
         if not self.enabled:
             return {"status": "unknown", "reason": "metrics disabled"}
@@ -757,7 +757,7 @@ class MCPMetricsCollector:
 
 
 def create_metrics_collector_from_config(
-    config: Dict[str, Any]
+    config: [str, Any]
 ) -> Optional[MCPMetricsCollector]:
     """
     Create a metrics collector from configuration dictionary.
@@ -777,7 +777,7 @@ def create_metrics_collector_from_config(
 
 
 def setup_default_export_callbacks(
-    metrics_collector: MCPMetricsCollector, config: Dict[str, Any]
+    metrics_collector: MCPMetricsCollector, config: [str, Any]
 ) -> None:
     """
     Setup default export callbacks based on configuration.
@@ -792,7 +792,7 @@ def setup_default_export_callbacks(
     export_file = metrics_config.get("export_file")
     if export_file:
 
-        def file_export_callback(metrics: Dict[str, Any]):
+        def file_export_callback(metrics: [str, Any]):
             try:
                 with open(export_file, "w") as f:
                     json.dump(metrics, f, indent=2)
@@ -804,7 +804,7 @@ def setup_default_export_callbacks(
     # Console export callback
     if metrics_config.get("export_to_console", False):
 
-        def console_export_callback(metrics: Dict[str, Any]):
+        def console_export_callback(metrics: [str, Any]):
             print(f"\n=== MCP Metrics Report ===")
             print(
                 f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(metrics['timestamp']))}"
@@ -862,7 +862,7 @@ class MetricsIntegrationMixin:
         self,
         metric_name: str,
         value: Union[int, float],
-        labels: Optional[Dict[str, str]] = None,
+        labels: Optional[[str, str]] = None,
     ):
         """
         Record transport-specific metrics.

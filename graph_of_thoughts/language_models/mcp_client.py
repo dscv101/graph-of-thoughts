@@ -134,7 +134,7 @@ import random
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 # Third-party imports
 import backoff
@@ -375,7 +375,7 @@ class MCPLanguageModel(AbstractLanguageModel):
     low-level protocol details, connection management, and error recovery automatically.
 
     Attributes:
-        config (Dict): The MCP configuration for the selected model
+        config (): The MCP configuration for the selected model
         transport (MCPTransport): The transport layer (stdio or HTTP)
         validator (MCPProtocolValidator): Protocol message validator
         transport_type (str): Type of transport being used ("stdio" or "http")
@@ -475,7 +475,7 @@ class MCPLanguageModel(AbstractLanguageModel):
             )  # Use defaults, will be overridden if config specifies
 
         super().__init__(config_path, model_name, cache, cache_config)
-        self.config: Dict = self.config[model_name]
+        self.config:  = self.config[model_name]
 
         # Migrate old configuration format to new format if needed
         self.config = self._migrate_config_if_needed(self.config)
@@ -500,13 +500,13 @@ class MCPLanguageModel(AbstractLanguageModel):
             raise ValueError(f"Invalid MCP configuration for {model_name}")
 
         # Extract configuration sections
-        self.transport_config: Dict = self.config["transport"]
-        self.client_info: Dict = self.config["client_info"]
-        self.capabilities: Dict = self.config["capabilities"]
-        self.default_sampling_params: Dict = self.config.get(
+        self.transport_config:  = self.config["transport"]
+        self.client_info:  = self.config["client_info"]
+        self.capabilities:  = self.config["capabilities"]
+        self.default_sampling_params:  = self.config.get(
             "default_sampling_params", {}
         )
-        self.connection_config: Dict = self.config.get("connection_config", {})
+        self.connection_config:  = self.config.get("connection_config", {})
 
         # Cost tracking (application-specific, not part of MCP protocol)
         cost_tracking = self.config.get("cost_tracking", {})
@@ -657,15 +657,15 @@ class MCPLanguageModel(AbstractLanguageModel):
             "command", "unknown"
         )  # For backward compatibility
 
-    def _migrate_config_if_needed(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    def _migrate_config_if_needed(self, config: [str, Any]) -> [str, Any]:
         """
         Migrate old configuration format to new MCP protocol-compliant format.
         Provides backward compatibility for existing configuration files.
 
         :param config: Configuration dictionary (potentially in old format)
-        :type config: Dict[str, Any]
+        :type config: [str, Any]
         :return: Configuration in new format
-        :rtype: Dict[str, Any]
+        :rtype: [str, Any]
         """
         # Check if this is already in new format
         if "transport" in config and "client_info" in config:
@@ -752,7 +752,7 @@ class MCPLanguageModel(AbstractLanguageModel):
 
     def _create_sampling_request(
         self, query: str, num_responses: int = 1
-    ) -> Dict[str, Any]:
+    ) -> [str, Any]:
         """
         Create a properly formatted MCP sampling request following the specification.
 
@@ -761,7 +761,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         :param num_responses: Number of desired responses, default is 1.
         :type num_responses: int
         :return: The sampling request
-        :rtype: Dict[str, Any]
+        :rtype: [str, Any]
         """
         # Create messages in MCP format
         messages = [{"role": "user", "content": {"type": "text", "text": query}}]
@@ -782,14 +782,14 @@ class MCPLanguageModel(AbstractLanguageModel):
             },
         )
 
-    async def _send_sampling_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    async def _send_sampling_request(self, request: [str, Any]) -> [str, Any]:
         """
         Send a sampling request to the MCP server with advanced retry logic.
 
         :param request: The sampling request
-        :type request: Dict[str, Any]
+        :type request: [str, Any]
         :return: The response from the server
-        :rtype: Dict[str, Any]
+        :rtype: [str, Any]
         """
         await self._ensure_connection()
 
@@ -868,7 +868,7 @@ class MCPLanguageModel(AbstractLanguageModel):
             f"Sampling request failed after {self.retry_config.max_attempts} attempts: {last_exception}"
         )
 
-    def query(self, query: str, num_responses: int = 1) -> Union[List[Dict], Dict]:
+    def query(self, query: str, num_responses: int = 1) -> Union[[], ]:
         """
         Query the MCP host for responses.
 
@@ -881,7 +881,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         :param num_responses: Number of desired responses, default is 1.
         :type num_responses: int
         :return: Response(s) from the MCP host. Single dict if num_responses=1, list of dicts otherwise.
-        :rtype: Union[List[Dict], Dict]
+        :rtype: Union[[], ]
 
         Example:
             Single response:
@@ -962,7 +962,7 @@ class MCPLanguageModel(AbstractLanguageModel):
 
     def _run_async_query(
         self, query: str, num_responses: int = 1
-    ) -> Union[List[Dict], Dict]:
+    ) -> Union[[], ]:
         """
         Helper method to run async query with optimized event loop management.
 
@@ -974,7 +974,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         :param num_responses: Number of desired responses
         :type num_responses: int
         :return: Response(s) from the MCP host
-        :rtype: Union[List[Dict], Dict]
+        :rtype: Union[[], ]
         :raises RuntimeError: If called from within an async context (use _query_async instead)
         """
 
@@ -1000,7 +1000,7 @@ class MCPLanguageModel(AbstractLanguageModel):
 
     async def _query_async(
         self, query: str, num_responses: int = 1
-    ) -> Union[List[Dict], Dict]:
+    ) -> Union[[], ]:
         """
         Async implementation of query.
 
@@ -1009,7 +1009,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         :param num_responses: Number of desired responses, default is 1.
         :type num_responses: int
         :return: Response(s) from the MCP host.
-        :rtype: Union[List[Dict], Dict]
+        :rtype: Union[[], ]
         """
         request = self._create_sampling_request(query, num_responses)
 
@@ -1023,12 +1023,12 @@ class MCPLanguageModel(AbstractLanguageModel):
 
     async def query_batch(
         self,
-        queries: List[str],
+        queries: [str],
         max_concurrent: Optional[int] = None,
         batch_size: Optional[int] = None,
         retry_attempts: Optional[int] = None,
         retry_delay: Optional[float] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> [[str, Any]]:
         """
         Process multiple queries concurrently with batch processing optimizations.
 
@@ -1038,8 +1038,8 @@ class MCPLanguageModel(AbstractLanguageModel):
         - Implementing retry logic with exponential backoff
         - Providing detailed error handling and logging
 
-        :param queries: List of query strings to process
-        :type queries: List[str]
+        :param queries:  of query strings to process
+        :type queries: [str]
         :param max_concurrent: Maximum number of concurrent requests (default: 10)
         :type max_concurrent: int
         :param batch_size: Maximum batch size to process at once (default: 50)
@@ -1048,8 +1048,8 @@ class MCPLanguageModel(AbstractLanguageModel):
         :type retry_attempts: int
         :param retry_delay: Initial delay between retries in seconds (default: 1.0)
         :type retry_delay: float
-        :return: List of response dictionaries in the same order as input queries
-        :rtype: List[Dict[str, Any]]
+        :return:  of response dictionaries in the same order as input queries
+        :rtype: [[str, Any]]
         :raises ConnectionError: If not connected to MCP server
         :raises ValueError: If queries list is empty
 
@@ -1135,7 +1135,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         semaphore: asyncio.Semaphore,
         retry_attempts: int,
         retry_delay: float,
-    ) -> Dict[str, Any]:
+    ) -> [str, Any]:
         """
         Process a single query with advanced retry logic and concurrency control.
 
@@ -1148,7 +1148,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         :param retry_delay: Initial delay between retries (legacy parameter, uses retry_config instead)
         :type retry_delay: float
         :return: Response dictionary
-        :rtype: Dict[str, Any]
+        :rtype: [str, Any]
         :raises Exception: If all retry attempts fail
         """
         async with semaphore:
@@ -1208,14 +1208,14 @@ class MCPLanguageModel(AbstractLanguageModel):
             raise last_exception
 
     def _update_token_usage(
-        self, response: Dict[str, Any], prompt_text: Optional[str] = None
+        self, response: [str, Any], prompt_text: Optional[str] = None
     ) -> None:
         """
         Update token usage and cost tracking based on response using improved estimation.
         Note: This is application-specific functionality, not part of the MCP protocol.
 
         :param response: The response from the MCP server
-        :type response: Dict[str, Any]
+        :type response: [str, Any]
         :param prompt_text: Optional prompt text for better estimation
         :type prompt_text: Optional[str]
         """
@@ -1276,7 +1276,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         except Exception as e:
             self.logger.warning(f"Failed to update token usage: {e}")
 
-    def get_response_texts(self, query_response: Union[List[Dict], Dict]) -> List[str]:
+    def get_response_texts(self, query_response: Union[[], ]) -> [str]:
         """
         Extract the response texts from the query response following MCP response format.
 
@@ -1285,9 +1285,9 @@ class MCPLanguageModel(AbstractLanguageModel):
         appropriate representations for each type.
 
         :param query_response: The response (or list of responses) from the MCP server.
-        :type query_response: Union[List[Dict], Dict]
-        :return: List of response strings. Always returns a list, even for single responses.
-        :rtype: List[str]
+        :type query_response: Union[[], ]
+        :return:  of response strings. Always returns a list, even for single responses.
+        :rtype: [str]
 
         Example:
             Extract text from single response:
@@ -1357,12 +1357,12 @@ class MCPLanguageModel(AbstractLanguageModel):
 
         return texts
 
-    def get_circuit_breaker_status(self) -> Optional[Dict[str, Any]]:
+    def get_circuit_breaker_status(self) -> Optional[[str, Any]]:
         """
         Get circuit breaker status and metrics if available.
 
         Returns:
-            Dict with circuit breaker status or None if not enabled
+             with circuit breaker status or None if not enabled
         """
         if hasattr(self.transport, "get_circuit_breaker_metrics"):
             try:
@@ -1395,18 +1395,18 @@ class MCPLanguageModel(AbstractLanguageModel):
             return self.transport.is_circuit_healthy()
         return True  # Assume healthy if no circuit breaker
 
-    def get_metrics(self) -> Optional[Dict[str, Any]]:
+    def get_metrics(self) -> Optional[[str, Any]]:
         """
         Get comprehensive metrics for the MCP client.
 
         Returns:
-            Dictionary containing current metrics or None if metrics disabled
+            ionary containing current metrics or None if metrics disabled
         """
         if self.metrics_collector:
             return self.metrics_collector.get_current_metrics()
         return None
 
-    def get_method_metrics(self, method: str) -> Optional[Dict[str, Any]]:
+    def get_method_metrics(self, method: str) -> Optional[[str, Any]]:
         """
         Get metrics for a specific MCP method.
 
@@ -1414,29 +1414,29 @@ class MCPLanguageModel(AbstractLanguageModel):
             method: The MCP method name
 
         Returns:
-            Dictionary containing method-specific metrics or None if metrics disabled
+            ionary containing method-specific metrics or None if metrics disabled
         """
         if self.metrics_collector:
             return self.metrics_collector.get_method_metrics(method)
         return None
 
-    def get_error_summary(self) -> Optional[Dict[str, Any]]:
+    def get_error_summary(self) -> Optional[[str, Any]]:
         """
         Get summary of errors encountered.
 
         Returns:
-            Dictionary containing error statistics or None if metrics disabled
+            ionary containing error statistics or None if metrics disabled
         """
         if self.metrics_collector:
             return self.metrics_collector.get_error_summary()
         return None
 
-    def get_health_status(self) -> Dict[str, Any]:
+    def get_health_status(self) -> [str, Any]:
         """
         Get overall health status based on metrics and circuit breaker state.
 
         Returns:
-            Dictionary containing comprehensive health assessment
+            ionary containing comprehensive health assessment
         """
         health_status = {
             "timestamp": time.time(),

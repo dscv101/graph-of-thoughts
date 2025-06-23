@@ -160,7 +160,7 @@ import time
 import uuid
 from abc import ABC, abstractmethod
 from contextlib import AsyncExitStack
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional
 
 # Third-party imports
 import httpx
@@ -179,16 +179,16 @@ try:
 except ImportError:
     # Fallback if metrics module not available
     class MetricsIntegrationMixin:
-        def set_metrics_collector(self, metrics_collector):
+        def set_metrics_collector(self, metrics_collector: Any) -> None:
             pass
 
-        def record_connection_metric(self, success, duration_ms):
+        def record_connection_metric(self, success: bool, duration_ms: float) -> None:
             pass
 
-        def record_transport_metric(self, metric_name, value, labels=None):
+        def record_transport_metric(self, metric_name: str, value: float, labels: Optional[dict] = None) -> None:
             pass
 
-    def get_global_metrics_collector():
+    def get_global_metrics_collector() -> None:
         return None
 
     METRICS_AVAILABLE = False
@@ -200,12 +200,12 @@ class MCPTransport(ABC):
     Handles JSON-RPC 2.0 message formatting and protocol compliance.
     """
 
-    def __init__(self, config: Dict[str, Any]) -> None:
+    def __init__(self, config: dictdict[str, Any]) -> None:
         """
         Initialize the MCP transport.
 
         :param config: Transport configuration
-        :type config: Dict[str, Any]
+        :type config: dictdict[str, Any]
         """
         self.config = config
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -224,17 +224,17 @@ class MCPTransport(ABC):
         return f"req_{self._request_id_counter}_{uuid.uuid4().hex[:8]}"
 
     def _create_jsonrpc_request(
-        self, method: str, params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, method: str, params: "dict[dict[str, Any]]"
+    ) -> "dict[dict[str, Any]]":
         """
         Create a JSON-RPC 2.0 request message.
 
         :param method: The method name
         :type method: str
         :param params: The parameters
-        :type params: Dict[str, Any]
+        :type params: "dict[dict[str, Any]]"
         :return: JSON-RPC request
-        :rtype: Dict[str, Any]
+        :rtype: "dict[dict[str, Any]]"
         """
         return {
             "jsonrpc": "2.0",
@@ -244,17 +244,17 @@ class MCPTransport(ABC):
         }
 
     def _create_jsonrpc_notification(
-        self, method: str, params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, method: str, params: "dict[dict[str, Any]]"
+    ) -> "dict[dict[str, Any]]":
         """
         Create a JSON-RPC 2.0 notification message.
 
         :param method: The method name
         :type method: str
         :param params: The parameters
-        :type params: Dict[str, Any]
+        :type params: "dict[dict[str, Any]]"
         :return: JSON-RPC notification
-        :rtype: Dict[str, Any]
+        :rtype: "dict[dict[str, Any]]"
         """
         return {"jsonrpc": "2.0", "method": method, "params": params}
 
@@ -276,27 +276,27 @@ class MCPTransport(ABC):
         pass
 
     @abstractmethod
-    async def send_request(self, method: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    async def send_request(self, method: str, params: "dict[dict[str, Any]]") -> "dict[dict[str, Any]]":
         """
         Send a JSON-RPC request to the MCP host.
 
         :param method: The method name
         :type method: str
         :param params: The request parameters
-        :type params: Dict[str, Any]
+        :type params: "dict[dict[str, Any]]"
         :return: The response from the host
-        :rtype: Dict[str, Any]
+        :rtype: "dict[dict[str, Any]]"
         """
         pass
 
-    async def send_sampling_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    async def send_sampling_request(self, request: "dict[dict[str, Any]]") -> "dict[dict[str, Any]]":
         """
         Send a sampling request to the MCP host using the proper protocol.
 
         :param request: The sampling request
-        :type request: Dict[str, Any]
+        :type request: "dict[dict[str, Any]]"
         :return: The response from the host
-        :rtype: Dict[str, Any]
+        :rtype: "dict[dict[str, Any]]"
         """
         # Validate the sampling request
         if not self.validator.validate_sampling_request(request):
@@ -304,12 +304,12 @@ class MCPTransport(ABC):
 
         return await self.send_request("sampling/createMessage", request)
 
-    async def initialize(self) -> Dict[str, Any]:
+    async def initialize(self) -> "dict[dict[str, Any]]":
         """
         Send initialization request to establish the MCP session.
 
         :return: Initialization response
-        :rtype: Dict[str, Any]
+        :rtype: "dict[dict[str, Any]]"
         """
         client_info = self.config.get("client_info", {})
         capabilities = self.config.get("capabilities", {})
@@ -327,14 +327,14 @@ class MCPTransport(ABC):
 
         return response
 
-    async def send_notification(self, method: str, params: Dict[str, Any]) -> None:
+    async def send_notification(self, method: str, params: "dict[dict[str, Any]]") -> None:
         """
         Send a JSON-RPC notification (no response expected).
 
         :param method: The method name
         :type method: str
         :param params: The notification parameters
-        :type params: Dict[str, Any]
+        :type params: "dict[dict[str, Any]]"
         """
         # Default implementation - subclasses should override if needed
         pass
@@ -360,12 +360,12 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
     This is used for connecting to local MCP servers via standard input/output.
     """
 
-    def __init__(self, config: Dict[str, Any]) -> None:
+    def __init__(self, config: "dict[dict[str, Any]]") -> None:
         """
         Initialize the stdio MCP transport.
 
         :param config: Transport configuration
-        :type config: Dict[str, Any]
+        :type config: "dict[dict[str, Any]]"
         """
         super().__init__(config)
         MetricsIntegrationMixin.__init__(self)
@@ -501,16 +501,16 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
         except Exception as e:
             self.logger.error(f"Error during disconnect: {e}")
 
-    async def send_request(self, method: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    async def send_request(self, method: str, params: "dict[dict[str, Any]]") -> "dict[dict[str, Any]]":
         """
         Send a JSON-RPC request via stdio using the MCP session.
 
         :param method: The method name
         :type method: str
         :param params: The request parameters
-        :type params: Dict[str, Any]
+        :type params: "dict[dict[str, Any]]"
         :return: The response from the server
-        :rtype: Dict[str, Any]
+        :rtype: "dict[dict[str, Any]]"
         """
         if not self.connected or not self.session:
             raise RuntimeError("Not connected to MCP server")
@@ -599,13 +599,13 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
             raise MCPTransportError(f"Failed to send request: {e}", e)
 
     def _convert_to_mcp_sampling_params(
-        self, params: Dict[str, Any]
+        self, params: "dict[dict[str, Any]]"
     ) -> mcp_types.CreateMessageRequestParams:
         """
         Convert our internal sampling parameters to MCP CreateMessageRequestParams.
 
         :param params: Internal sampling parameters
-        :type params: Dict[str, Any]
+        :type params: "dict[dict[str, Any]]"
         :return: MCP CreateMessageRequestParams
         :rtype: mcp_types.CreateMessageRequestParams
         """
@@ -668,14 +668,14 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
 
     def _convert_from_mcp_result(
         self, result: mcp_types.CreateMessageResult
-    ) -> Dict[str, Any]:
+    ) -> "dict[dict[str, Any]]":
         """
         Convert MCP CreateMessageResult to our internal format.
 
         :param result: MCP CreateMessageResult
         :type result: mcp_types.CreateMessageResult
         :return: Internal format response
-        :rtype: Dict[str, Any]
+        :rtype: "dict[dict[str, Any]]"
         """
         # Convert content back to our format
         content = result.content
@@ -695,14 +695,14 @@ class StdioMCPTransport(MCPTransport, MetricsIntegrationMixin):
             "stopReason": result.stopReason,
         }
 
-    async def send_notification(self, method: str, params: Dict[str, Any]) -> None:
+    async def send_notification(self, method: str, params: "dict[dict[str, Any]]") -> None:
         """
         Send a JSON-RPC notification via stdio.
 
         :param method: The method name
         :type method: str
         :param params: The notification parameters
-        :type params: Dict[str, Any]
+        :type params: "dict[dict[str, Any]]"
         """
         if not self.connected or not self.session:
             raise RuntimeError("Not connected to MCP server")
@@ -732,12 +732,12 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
         - Automatic connection reuse across requests
     """
 
-    def __init__(self, config: Dict[str, Any]) -> None:
+    def __init__(self, config: "dict[dict[str, Any]]") -> None:
         """
         Initialize the HTTP MCP transport with connection pooling.
 
         :param config: Transport configuration
-        :type config: Dict[str, Any]
+        :type config: "dict[dict[str, Any]]"
         """
         super().__init__(config)
         MetricsIntegrationMixin.__init__(self)
@@ -936,12 +936,12 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
         except Exception as e:
             self.logger.debug(f"Could not retrieve connection pool stats: {e}")
 
-    def get_connection_pool_info(self) -> Dict[str, Any]:
+    def get_connection_pool_info(self) -> "dict[dict[str, Any]]":
         """
         Get information about the current connection pool state.
 
-        :return: Dictionary containing pool information
-        :rtype: Dict[str, Any]
+        :return: ionary containing pool information
+        :rtype: "dict[dict[str, Any]]"
         """
         if not self.client:
             return {"status": "disconnected"}
@@ -970,16 +970,16 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
 
         return info
 
-    async def send_request(self, method: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    async def send_request(self, method: str, params: "dict[dict[str, Any]]") -> "dict[dict[str, Any]]":
         """
         Send a JSON-RPC request via HTTP using the Streamable HTTP transport.
 
         :param method: The method name
         :type method: str
         :param params: The request parameters
-        :type params: Dict[str, Any]
+        :type params: "dict[dict[str, Any]]"
         :return: The response from the server
-        :rtype: Dict[str, Any]
+        :rtype: "dict[dict[str, Any]]"
         """
         if not self.connected or not self.client:
             raise RuntimeError("Not connected to MCP server")
@@ -1105,14 +1105,14 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
             self.logger.error(f"Unexpected error sending HTTP request: {e}")
             raise MCPTransportError(f"Failed to send HTTP request: {e}", e)
 
-    def _convert_http_sampling_response(self, result: Dict[str, Any]) -> Dict[str, Any]:
+    def _convert_http_sampling_response(self, result: "dict[dict[str, Any]]") -> "dict[dict[str, Any]]":
         """
         Convert HTTP JSON-RPC sampling response to our internal format.
 
         :param result: HTTP JSON-RPC result
-        :type result: Dict[str, Any]
+        :type result: "dict[dict[str, Any]]"
         :return: Internal format response
-        :rtype: Dict[str, Any]
+        :rtype: "dict[dict[str, Any]]"
         """
         # HTTP responses should already be in the correct format
         # but ensure consistency with our expected structure
@@ -1123,14 +1123,14 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
             "stopReason": result.get("stopReason", "endTurn"),
         }
 
-    async def send_notification(self, method: str, params: Dict[str, Any]) -> None:
+    async def send_notification(self, method: str, params: "dict[dict[str, Any]]") -> None:
         """
         Send a JSON-RPC notification via HTTP.
 
         :param method: The method name
         :type method: str
         :param params: The notification parameters
-        :type params: Dict[str, Any]
+        :type params: "dict[dict[str, Any]]"
         """
         if not self.connected or not self.client:
             raise RuntimeError("Not connected to MCP server")
@@ -1156,7 +1156,7 @@ class HTTPMCPTransport(MCPTransport, MetricsIntegrationMixin):
             raise
 
 
-def create_transport(config: Dict[str, Any]) -> MCPTransport:
+def create_transport(config: "dict[dict[str, Any]]") -> MCPTransport:
     """
     Factory function to create the appropriate MCP transport based on configuration.
 
@@ -1169,7 +1169,7 @@ def create_transport(config: Dict[str, Any]) -> MCPTransport:
     from the mcp_host_plugins module.
 
     :param config: Complete MCP configuration containing transport settings
-    :type config: Dict[str, Any]
+    :type config: "dict[dict[str, Any]]"
     :return: MCP transport instance (StdioMCPTransport or HTTPMCPTransport)
     :rtype: MCPTransport
 

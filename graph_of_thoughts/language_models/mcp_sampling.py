@@ -163,7 +163,7 @@ Performance Considerations:
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from .mcp_protocol import (
     MCPIncludeContext,
@@ -183,42 +183,42 @@ class MCPSamplingManager:
     and proper message formatting according to the MCP protocol.
     """
 
-    def __init__(self, transport: MCPTransport, config: Dict[str, Any]) -> None:
+    def __init__(self, transport: MCPTransport, config: [str, Any]) -> None:
         """
         Initialize the MCP sampling manager.
 
         :param transport: The MCP transport to use for communication
         :type transport: MCPTransport
         :param config: Configuration for sampling
-        :type config: Dict[str, Any]
+        :type config: [str, Any]
         """
         self.transport = transport
         self.config = config
         self.logger = logging.getLogger(self.__class__.__name__)
         self.validator = MCPProtocolValidator()
-        self.conversation_history: List[Dict[str, Any]] = []
+        self.conversation_history: [[str, Any]] = []
         self.default_sampling_params = config.get("default_sampling_params", {})
 
     async def create_message(
         self,
-        messages: List[Dict[str, Any]],
+        messages: [[str, Any]],
         system_prompt: Optional[str] = None,
-        model_preferences: Optional[Dict[str, Any]] = None,
+        model_preferences: Optional[[str, Any]] = None,
         include_context: str = "none",
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
-        stop_sequences: Optional[List[str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        stop_sequences: Optional[[str]] = None,
+        metadata: Optional[[str, Any]] = None,
+    ) -> [str, Any]:
         """
         Create a message using MCP sampling following the official specification.
 
-        :param messages: List of messages in the conversation (MCP format)
-        :type messages: List[Dict[str, Any]]
+        :param messages:  of messages in the conversation (MCP format)
+        :type messages: [[str, Any]]
         :param system_prompt: Optional system prompt
         :type system_prompt: Optional[str]
         :param model_preferences: Model selection preferences
-        :type model_preferences: Optional[Dict[str, Any]]
+        :type model_preferences: Optional[[str, Any]]
         :param include_context: Context inclusion setting ("none", "thisServer", "allServers")
         :type include_context: str
         :param temperature: Sampling temperature
@@ -226,11 +226,11 @@ class MCPSamplingManager:
         :param max_tokens: Maximum tokens to generate
         :type max_tokens: Optional[int]
         :param stop_sequences: Stop sequences
-        :type stop_sequences: Optional[List[str]]
+        :type stop_sequences: Optional[[str]]
         :param metadata: Additional metadata
-        :type metadata: Optional[Dict[str, Any]]
+        :type metadata: Optional[[str, Any]]
         :return: The response from the MCP server
-        :rtype: Dict[str, Any]
+        :rtype: [str, Any]
         """
         # Use defaults from config if not provided
         if model_preferences is None:
@@ -355,13 +355,13 @@ class MCPSamplingManager:
             return str(response)
 
     async def create_multi_turn_completion(
-        self, conversation: List[Dict[str, str]], **kwargs
+        self, conversation: [[str, str]], **kwargs
     ) -> str:
         """
         Create a completion for a multi-turn conversation.
 
-        :param conversation: List of conversation turns with 'role' and 'content' keys
-        :type conversation: List[Dict[str, str]]
+        :param conversation:  of conversation turns with 'role' and 'content' keys
+        :type conversation: [[str, str]]
         :param kwargs: Additional arguments for create_message
         :return: The text response
         :rtype: str
@@ -391,28 +391,28 @@ class MCPSamplingManager:
         self.conversation_history.clear()
         self.logger.debug("Conversation history cleared")
 
-    def get_conversation_history(self) -> List[Dict[str, Any]]:
+    def get_conversation_history(self) -> [[str, Any]]:
         """
         Get the current conversation history.
 
         :return: The conversation history
-        :rtype: List[Dict[str, Any]]
+        :rtype: [[str, Any]]
         """
         return self.conversation_history.copy()
 
     async def create_batch_completions(
-        self, prompts: List[str], system_prompt: Optional[str] = None, **kwargs
-    ) -> List[str]:
+        self, prompts: [str], system_prompt: Optional[str] = None, **kwargs
+    ) -> [str]:
         """
         Create multiple completions in batch.
 
-        :param prompts: List of prompts to process
-        :type prompts: List[str]
+        :param prompts:  of prompts to process
+        :type prompts: [str]
         :param system_prompt: Optional system prompt
         :type system_prompt: Optional[str]
         :param kwargs: Additional arguments for create_message
-        :return: List of text responses
-        :rtype: List[str]
+        :return:  of text responses
+        :rtype: [str]
         """
         tasks = []
         for prompt in prompts:

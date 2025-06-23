@@ -9,8 +9,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, List
-
 
 class Prompter(ABC):
     """
@@ -19,12 +17,12 @@ class Prompter(ABC):
     """
 
     @abstractmethod
-    def aggregation_prompt(self, state_dicts: List[Dict], **kwargs) -> str:
+    def aggregation_prompt(self, state_dicts: [], **kwargs) -> str:
         """
         Generate a aggregation prompt for the language model.
 
         :param state_dicts: The thought states that should be aggregated.
-        :type state_dicts: List[Dict]
+        :type state_dicts: []
         :param kwargs: Additional keyword arguments.
         :return: The aggregation prompt.
         :rtype: str
@@ -73,13 +71,13 @@ class Prompter(ABC):
         pass
 
     @abstractmethod
-    def score_prompt(self, state_dicts: List[Dict], **kwargs) -> str:
+    def score_prompt(self, state_dicts: [], **kwargs) -> str:
         """
         Generate a score prompt for the language model.
 
         :param state_dicts: The thought states that should be scored,
                             if more than one, they should be scored together.
-        :type state_dicts: List[Dict]
+        :type state_dicts: []
         :param kwargs: Additional keyword arguments.
         :return: The score prompt.
         :rtype: str
