@@ -200,7 +200,7 @@ class MCPCircuitBreaker:
         Args:
             operation: Async callable to protect
 
-        Returns:
+        Yields:
             Result of the operation
 
         Raises:
@@ -208,7 +208,8 @@ class MCPCircuitBreaker:
             Exception: Any exception from the protected operation
         """
         async with self:
-            return await operation()
+            result = await operation()
+            yield result
 
     async def call(self, operation: Callable, *args, **kwargs):
         """

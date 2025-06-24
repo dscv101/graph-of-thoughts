@@ -147,7 +147,7 @@ class TestMCPSamplingManager(AsyncTestCase):
         }
         self.manager = MCPSamplingManager(self.mock_transport, self.config)
 
-    async def test_single_request(self):
+    async def _test_single_request(self):
         """Test sending single sampling request."""
         self.mock_transport.send_sampling_request.return_value = {
             "content": [{"type": "text", "text": "Response"}]
@@ -161,9 +161,9 @@ class TestMCPSamplingManager(AsyncTestCase):
 
         # Check that custom temperature was used
         call_args = self.mock_transport.send_sampling_request.call_args[0][0]
-        self.assertEqual(call_args["params"]["temperature"], 0.5)
+        self.assertEqual(call_args["temperature"], 0.5)
 
-    async def test_batch_request(self):
+    async def _test_batch_request(self):
         """Test batch processing of multiple requests."""
         # Mock responses for batch
         self.mock_transport.send_sampling_request.return_value = {
@@ -181,7 +181,7 @@ class TestMCPSamplingManager(AsyncTestCase):
         # Should have made 3 calls
         self.assertEqual(self.mock_transport.send_sampling_request.call_count, 3)
 
-    async def test_batch_with_custom_params(self):
+    async def _test_batch_with_custom_params(self):
         """Test batch processing with custom parameters."""
         self.mock_transport.send_sampling_request.return_value = {
             "content": [{"type": "text", "text": "Response"}]
@@ -194,11 +194,11 @@ class TestMCPSamplingManager(AsyncTestCase):
 
         # Check that all requests used custom parameters
         for call in self.mock_transport.send_sampling_request.call_args_list:
-            params = call[0][0]["params"]
-            self.assertEqual(params["temperature"], 0.3)
-            self.assertEqual(params["maxTokens"], 500)
+            request = call[0][0]
+            self.assertEqual(request["temperature"], 0.3)
+            self.assertEqual(request["maxTokens"], 500)
 
-    async def test_batch_error_handling(self):
+    async def _test_batch_error_handling(self):
         """Test error handling in batch processing."""
         # Mock one success and one failure
         self.mock_transport.send_sampling_request.side_effect = [
@@ -214,7 +214,7 @@ class TestMCPSamplingManager(AsyncTestCase):
         self.assertEqual(responses[0], "Success")
         self.assertIsNone(responses[1])  # Failed request should be None
 
-    async def test_batch_size_limiting(self):
+    async def _test_batch_size_limiting(self):
         """Test batch size limiting."""
         # Create more prompts than batch size
         prompts = [f"Prompt {i}" for i in range(15)]
@@ -229,7 +229,7 @@ class TestMCPSamplingManager(AsyncTestCase):
         self.assertEqual(len(responses), 15)
         self.assertEqual(self.mock_transport.send_sampling_request.call_count, 15)
 
-    async def test_concurrent_limiting(self):
+    async def _test_concurrent_limiting(self):
         """Test concurrent request limiting."""
         # Create many prompts to test concurrency limiting
         prompts = [f"Prompt {i}" for i in range(20)]
@@ -263,27 +263,27 @@ class TestMCPSamplingManager(AsyncTestCase):
 
     def test_single_request_sync(self):
         """Test sending single sampling request (sync wrapper)."""
-        self.run_async_test(self.test_single_request)
+        self.run_async_test(self._test_single_request)
 
     def test_batch_request_sync(self):
         """Test batch processing (sync wrapper)."""
-        self.run_async_test(self.test_batch_request)
+        self.run_async_test(self._test_batch_request)
 
     def test_batch_with_custom_params_sync(self):
         """Test batch with custom parameters (sync wrapper)."""
-        self.run_async_test(self.test_batch_with_custom_params)
+        self.run_async_test(self._test_batch_with_custom_params)
 
     def test_batch_error_handling_sync(self):
         """Test batch error handling (sync wrapper)."""
-        self.run_async_test(self.test_batch_error_handling)
+        self.run_async_test(self._test_batch_error_handling)
 
     def test_batch_size_limiting_sync(self):
         """Test batch size limiting (sync wrapper)."""
-        self.run_async_test(self.test_batch_size_limiting)
+        self.run_async_test(self._test_batch_size_limiting)
 
     def test_concurrent_limiting_sync(self):
         """Test concurrent limiting (sync wrapper)."""
-        self.run_async_test(self.test_concurrent_limiting)
+        self.run_async_test(self._test_concurrent_limiting)
 
 
 # BatchProcessor tests removed - class doesn't exist in current implementation

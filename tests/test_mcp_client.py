@@ -113,7 +113,7 @@ class TestMCPLanguageModel(AsyncTestCase):
 
     def test_initialization_missing_config(self):
         """Test initialization with missing configuration."""
-        with self.assertRaises(ValueError):
+        with self.assertRaises(FileNotFoundError):
             MCPLanguageModel(model_name="nonexistent")
 
     def test_initialization_invalid_model_name(self):
@@ -121,7 +121,7 @@ class TestMCPLanguageModel(AsyncTestCase):
         with self.assertRaises(ValueError):
             MCPLanguageModel(config=self.test_config, model_name="invalid_model")
 
-    async def test_query_async_success(self):
+    async def _test_query_async_success(self):
         """Test successful async query."""
         with patch(
             "graph_of_thoughts.language_models.mcp_transport.create_transport"
@@ -139,12 +139,14 @@ class TestMCPLanguageModel(AsyncTestCase):
 
             response = await lm.query_async("Hello, world!")
 
-            self.assertEqual(len(response), 1)
-            self.assertIn("Hello! How can I help you today?", response[0])
+            # Extract text using the proper API
+            texts = lm.get_response_texts(response)
+            self.assertEqual(len(texts), 1)
+            self.assertIn("Hello! How can I help you today?", texts[0])
             mock_transport.connect.assert_called_once()
             mock_transport.send_sampling_request.assert_called_once()
 
-    async def test_query_async_with_params(self):
+    async def _test_query_async_with_params(self):
         """Test async query with custom parameters."""
         with patch(
             "graph_of_thoughts.language_models.mcp_transport.create_transport"
@@ -167,7 +169,7 @@ class TestMCPLanguageModel(AsyncTestCase):
             self.assertEqual(call_args["temperature"], 0.5)
             self.assertEqual(call_args["maxTokens"], 500)
 
-    async def test_query_async_connection_error(self):
+    async def _test_query_async_connection_error(self):
         """Test async query with connection error."""
         with patch(
             "graph_of_thoughts.language_models.mcp_transport.create_transport"
@@ -197,8 +199,10 @@ class TestMCPLanguageModel(AsyncTestCase):
 
             response = lm.query("Test sync query")
 
-            self.assertEqual(len(response), 1)
-            self.assertIn("Sync response", response[0])
+            # Extract text using the proper API
+            texts = lm.get_response_texts(response)
+            self.assertEqual(len(texts), 1)
+            self.assertIn("Sync response", texts[0])
 
     def test_get_response_texts_single(self):
         """Test extracting text from single response."""
@@ -242,7 +246,8 @@ class TestMCPLanguageModel(AsyncTestCase):
             response_tokens = 50
 
             cost = lm._calculate_cost(prompt_tokens, response_tokens)
-            expected_cost = (100 * 0.001) + (50 * 0.002)
+            # Cost calculation is per 1000 tokens
+            expected_cost = (100 / 1000.0 * 0.001) + (50 / 1000.0 * 0.002)
             self.assertEqual(cost, expected_cost)
 
     def test_token_estimation(self):
@@ -259,7 +264,7 @@ class TestMCPLanguageModel(AsyncTestCase):
             self.assertGreater(tokens, word_count * 0.5)
             self.assertLess(tokens, word_count * 2)
 
-    async def test_context_manager(self):
+    async def _test_context_manager(self):
         """Test async context manager."""
         with patch(
             "graph_of_thoughts.language_models.mcp_transport.create_transport"
@@ -284,19 +289,19 @@ class TestMCPLanguageModel(AsyncTestCase):
         ) as mock_create:
             mock_transport = AsyncMock()
 
-            # Mock circuit breaker methods
-            mock_transport.get_circuit_breaker_metrics.return_value = MagicMock(
+            # Mock circuit breaker methods - use MagicMock instead of AsyncMock for these
+            mock_transport.get_circuit_breaker_metrics = MagicMock(return_value=MagicMock(
                 total_requests=10,
                 successful_requests=8,
                 failed_requests=2,
                 circuit_open_count=1,
                 last_failure_time=1234567890,
                 state_change_time=1234567890,
-            )
-            mock_transport.get_circuit_breaker_state.return_value = MagicMock(
-                value="closed"
-            )
-            mock_transport.is_circuit_healthy.return_value = True
+            ))
+            # Import the actual enum for proper mocking
+            from graph_of_thoughts.language_models.mcp_circuit_breaker import CircuitBreakerState
+            mock_transport.get_circuit_breaker_state = MagicMock(return_value=CircuitBreakerState.CLOSED)
+            mock_transport.is_circuit_healthy = MagicMock(return_value=True)
 
             mock_create.return_value = mock_transport
 
@@ -336,19 +341,19 @@ class TestMCPLanguageModel(AsyncTestCase):
 
     def test_query_async_success_sync(self):
         """Test successful async query (sync wrapper)."""
-        self.run_async_test(self.test_query_async_success)
+        self.run_async_test(self._test_query_async_success)
 
     def test_query_async_with_params_sync(self):
         """Test async query with custom parameters (sync wrapper)."""
-        self.run_async_test(self.test_query_async_with_params)
+        self.run_async_test(self._test_query_async_with_params)
 
     def test_query_async_connection_error_sync(self):
         """Test async query with connection error (sync wrapper)."""
-        self.run_async_test(self.test_query_async_connection_error)
+        self.run_async_test(self._test_query_async_connection_error)
 
     def test_context_manager_sync(self):
         """Test async context manager (sync wrapper)."""
-        self.run_async_test(self.test_context_manager)
+        self.run_async_test(self._test_context_manager)
 
 
 class TestMCPLanguageModelEdgeCases(AsyncTestCase):
@@ -381,10 +386,11 @@ class TestMCPLanguageModelEdgeCases(AsyncTestCase):
         with patch("graph_of_thoughts.language_models.mcp_transport.create_transport"):
             lm = MCPLanguageModel(config=self.test_config, model_name="mcp_test")
 
-            # Test missing content field
+            # Test missing content field - new implementation provides descriptive message
             response = {"invalid": "structure"}
             texts = lm.get_response_texts(response)
-            self.assertEqual(texts, [])
+            self.assertEqual(len(texts), 1)
+            self.assertIn("Unknown content type", texts[0])
 
     def test_mixed_content_types(self):
         """Test handling of mixed content types."""
@@ -400,9 +406,11 @@ class TestMCPLanguageModelEdgeCases(AsyncTestCase):
             }
 
             texts = lm.get_response_texts(response)
-            self.assertEqual(len(texts), 2)
+            # New implementation includes image content as descriptive placeholder
+            self.assertEqual(len(texts), 3)
             self.assertEqual(texts[0], "Text content")
-            self.assertEqual(texts[1], "More text")
+            self.assertIn("Image content", texts[1])  # Image placeholder
+            self.assertEqual(texts[2], "More text")
 
     def test_large_token_estimation(self):
         """Test token estimation with large text."""

@@ -93,6 +93,51 @@ Add to your Cursor configuration:
 }
 ```
 
+### Augment Code
+
+Augment Code has native MCP support for both VS Code and JetBrains IDEs.
+
+#### VS Code Extension Settings
+
+Add to your VS Code `settings.json`:
+
+```json
+{
+  "augment.mcp.servers": {
+    "graph-of-thoughts": {
+      "command": "python",
+      "args": ["-m", "graph_of_thoughts"],
+      "description": "Graph of Thoughts reasoning server",
+      "autoApprove": [
+        "break_down_task",
+        "generate_thoughts",
+        "score_thoughts",
+        "validate_and_improve",
+        "aggregate_results",
+        "create_reasoning_chain"
+      ]
+    }
+  }
+}
+```
+
+#### JetBrains IDE Configuration
+
+1. Open **Settings** → **Tools** → **Augment Code** → **MCP Servers**
+2. **Add New Server**:
+   - **Name**: `graph-of-thoughts`
+   - **Command**: `python`
+   - **Arguments**: `-m graph_of_thoughts`
+   - **Description**: `Graph of Thoughts reasoning server`
+
+#### Quick Setup
+
+Use the automated setup script:
+
+```bash
+python setup_augment_code_mcp.py
+```
+
 ## Available Tools
 
 ### break_down_task

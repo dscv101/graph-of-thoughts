@@ -35,7 +35,7 @@ Example Usage:
     class MyCustomHostPlugin(MCPHostPlugin):
         def get_host_name(self) -> str:
             return "my_custom_host"
-        
+
         def get_default_config(self) -> "dict[dict[str, Any]]":
             return {
                 "transport": {
@@ -49,11 +49,11 @@ Example Usage:
                     "maxTokens": 4096
                 }
             }
-        
+
         def validate_config(self, config: "dict[dict[str, Any]]") -> bool:
             # Custom validation logic
             return True
-    
+
     # Register the plugin
     register_host_plugin(MyCustomHostPlugin())
     ```
@@ -352,6 +352,148 @@ class VSCodePlugin(MCPHostPlugin):
             },
             "cost_tracking": {"prompt_token_cost": 0.03, "response_token_cost": 0.06},
         }
+
+    def get_capabilities(self) -> HostCapabilities:
+        return HostCapabilities(
+            supports_resources=True,
+            supports_prompts=True,
+            supports_tools=True,
+            supports_sampling=True,
+            supports_roots=True,
+            supports_discovery=True,
+            transport_types=["stdio"],
+            authentication_methods=[],
+        )
+
+
+class AugmentCodePlugin(MCPHostPlugin):
+    """Plugin for Augment Code MCP host."""
+
+    def get_host_name(self) -> str:
+        return "augment_code"
+
+    def get_display_name(self) -> str:
+        return "Augment Code"
+
+    def get_description(self) -> str:
+        return "AI-powered coding platform for VS Code and JetBrains with native MCP support"
+
+    def get_default_config(self) -> "dict[dict[str, Any]]":
+        import sys
+        return {
+            "transport": {
+                "type": "stdio",
+                "command": sys.executable,
+                "args": ["-m", "graph_of_thoughts"],
+                "env": {},
+            },
+            "client_info": {"name": "graph-of-thoughts", "version": "0.0.3"},
+            "capabilities": {"sampling": {}, "tools": {}, "resources": {}, "prompts": {}},
+            "autoApprove": [
+                "break_down_task",
+                "generate_thoughts",
+                "score_thoughts",
+                "validate_and_improve",
+                "aggregate_results",
+                "create_reasoning_chain",
+            ],
+            "default_sampling_params": {
+                "temperature": 0.7,
+                "maxTokens": 4096,
+                "includeContext": "thisServer",
+            },
+            "connection_config": {"timeout": 30.0, "retry_attempts": 3},
+        }
+
+    def get_config_template(self) -> str:
+        import sys
+        python_path = sys.executable
+        return f"""
+# Augment Code MCP Configuration
+
+## VS Code Extension Settings
+Add to your VS Code settings.json:
+
+```json
+{{
+  "augment.mcp.servers": {{
+    "graph-of-thoughts": {{
+      "command": "{python_path}",
+      "args": ["-m", "graph_of_thoughts"],
+      "description": "Graph of Thoughts reasoning server",
+      "autoApprove": [
+        "break_down_task",
+        "generate_thoughts",
+        "score_thoughts",
+        "validate_and_improve",
+        "aggregate_results",
+        "create_reasoning_chain"
+      ]
+    }}
+  }}
+}}
+```
+
+## JetBrains IDE Configuration
+1. Open Settings → Tools → Augment Code → MCP Servers
+2. Add New Server:
+   - Name: graph-of-thoughts
+   - Command: {python_path}
+   - Arguments: -m graph_of_thoughts
+   - Description: Graph of Thoughts reasoning server
+
+## Augment Code Configuration File
+Create ~/.augment/mcp_config.json:
+
+```json
+{{
+  "servers": {{
+    "graph-of-thoughts": {{
+      "transport": {{
+        "type": "stdio",
+        "command": "{python_path}",
+        "args": ["-m", "graph_of_thoughts"]
+      }},
+      "capabilities": {{
+        "tools": true,
+        "resources": true,
+        "prompts": true
+      }},
+      "autoApprove": [
+        "break_down_task",
+        "generate_thoughts",
+        "score_thoughts",
+        "validate_and_improve",
+        "aggregate_results",
+        "create_reasoning_chain"
+      ],
+      "description": "Advanced reasoning workflows using Graph of Thoughts methodology"
+    }}
+  }}
+}}
+```
+"""
+
+    def validate_config(self, config: "dict[dict[str, Any]]") -> bool:
+        """Validate Augment Code specific configuration."""
+        transport = config.get("transport", {})
+
+        # Check required transport fields
+        if transport.get("type") != "stdio":
+            return False
+
+        if not transport.get("command"):
+            return False
+
+        # Validate capabilities
+        capabilities = config.get("capabilities", {})
+        required_caps = ["tools", "resources", "prompts"]
+
+        for cap in required_caps:
+            if cap not in capabilities:
+                return False
+
+        return True
 
     def get_capabilities(self) -> HostCapabilities:
         return HostCapabilities(
@@ -714,6 +856,7 @@ def _initialize_default_plugins() -> None:
         ClaudeDesktopPlugin(),
         VSCodePlugin(),
         CursorPlugin(),
+        AugmentCodePlugin(),
         HTTPServerPlugin(),
     ]
 

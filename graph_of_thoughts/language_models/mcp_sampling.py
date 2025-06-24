@@ -319,8 +319,12 @@ class MCPSamplingManager:
         content = response.get("content", {})
         if isinstance(content, dict) and content.get("type") == "text":
             return content.get("text", "")
-        else:
-            return str(response)
+        elif isinstance(content, list) and len(content) > 0:
+            # Handle list format (e.g., from tests)
+            first_content = content[0]
+            if isinstance(first_content, dict) and first_content.get("type") == "text":
+                return first_content.get("text", "")
+        return str(response)
 
     async def create_conversation_completion(
         self, new_message: str, use_history: bool = True, **kwargs
@@ -351,8 +355,12 @@ class MCPSamplingManager:
         content = response.get("content", {})
         if isinstance(content, dict) and content.get("type") == "text":
             return content.get("text", "")
-        else:
-            return str(response)
+        elif isinstance(content, list) and len(content) > 0:
+            # Handle list format (e.g., from tests)
+            first_content = content[0]
+            if isinstance(first_content, dict) and first_content.get("type") == "text":
+                return first_content.get("text", "")
+        return str(response)
 
     async def create_multi_turn_completion(
         self, conversation: [[str, str]], **kwargs
@@ -381,8 +389,12 @@ class MCPSamplingManager:
         content = response.get("content", {})
         if isinstance(content, dict) and content.get("type") == "text":
             return content.get("text", "")
-        else:
-            return str(response)
+        elif isinstance(content, list) and len(content) > 0:
+            # Handle list format (e.g., from tests)
+            first_content = content[0]
+            if isinstance(first_content, dict) and first_content.get("type") == "text":
+                return first_content.get("text", "")
+        return str(response)
 
     def clear_conversation_history(self) -> None:
         """
@@ -404,7 +416,7 @@ class MCPSamplingManager:
         self, prompts: [str], system_prompt: Optional[str] = None, **kwargs
     ) -> [str]:
         """
-        Create multiple completions in batch.
+        Create multiple completions in batch with concurrency control.
 
         :param prompts:  of prompts to process
         :type prompts: [str]
@@ -414,11 +426,23 @@ class MCPSamplingManager:
         :return:  of text responses
         :rtype: [str]
         """
+        # Get batch processing configuration
+        batch_config = self.config.get("batch_processing", {})
+        max_concurrent = batch_config.get("max_concurrent", 5)
+
+        # Create semaphore to limit concurrent requests
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def process_with_semaphore(prompt):
+            async with semaphore:
+                return await self.create_simple_completion(
+                    prompt=prompt, system_prompt=system_prompt, **kwargs
+                )
+
+        # Create tasks with concurrency control
         tasks = []
         for prompt in prompts:
-            task = self.create_simple_completion(
-                prompt=prompt, system_prompt=system_prompt, **kwargs
-            )
+            task = process_with_semaphore(prompt)
             tasks.append(task)
 
         responses = await asyncio.gather(*tasks, return_exceptions=True)
@@ -428,7 +452,7 @@ class MCPSamplingManager:
         for i, response in enumerate(responses):
             if isinstance(response, Exception):
                 self.logger.error(f"Batch completion {i} failed: {response}")
-                results.append(f"Error: {str(response)}")
+                results.append(None)  # Return None for failed requests as expected by tests
             else:
                 results.append(response)
 

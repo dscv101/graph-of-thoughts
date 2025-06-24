@@ -23,6 +23,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
+import httpx
+
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -106,42 +108,33 @@ class TestStdioMCPTransport(AsyncTestCase):
             with self.assertRaises((KeyError, ValueError)):
                 StdioMCPTransport(config)
 
-    @patch("asyncio.create_subprocess_exec")
-    async def test_connect_success(self, mock_subprocess):
+    @patch("graph_of_thoughts.language_models.mcp_transport.stdio_client")
+    @patch("graph_of_thoughts.language_models.mcp_transport.ClientSession")
+    async def _test_connect_success(self, mock_session_class, mock_stdio_client):
         """Test successful connection."""
-        # Mock process
-        mock_process = AsyncMock()
-        mock_process.stdin = AsyncMock()
-        mock_process.stdout = AsyncMock()
-        mock_process.stderr = AsyncMock()
-        mock_process.returncode = None
-        mock_subprocess.return_value = mock_process
+        # Mock the stdio client and session
+        mock_read_stream = AsyncMock()
+        mock_write_stream = AsyncMock()
+        mock_stdio_client.return_value.__aenter__.return_value = (mock_read_stream, mock_write_stream)
+
+        mock_session = AsyncMock()
+        mock_session.initialize = AsyncMock()
+        mock_session_class.return_value.__aenter__.return_value = mock_session
 
         transport = StdioMCPTransport(self.config)
 
-        # Mock initialization response
-        init_response = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "result": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {"sampling": {}},
-                "serverInfo": {"name": "test-server", "version": "1.0.0"},
-            },
-        }
-
-        with patch.object(transport, "_send_request", return_value=init_response):
-            result = await transport.connect()
+        result = await transport.connect()
 
         self.assertTrue(result)
         self.assertTrue(transport.connected)
-        self.assertIsNotNone(transport.process)
-        mock_subprocess.assert_called_once()
+        self.assertIsNotNone(transport.session)
+        mock_stdio_client.assert_called_once()
+        mock_session.initialize.assert_called_once()
 
-    @patch("asyncio.create_subprocess_exec")
-    async def test_connect_failure(self, mock_subprocess):
+    @patch("graph_of_thoughts.language_models.mcp_transport.stdio_client")
+    async def _test_connect_failure(self, mock_stdio_client):
         """Test connection failure."""
-        mock_subprocess.side_effect = OSError("Command not found")
+        mock_stdio_client.side_effect = OSError("Command not found")
 
         transport = StdioMCPTransport(self.config)
 
@@ -150,59 +143,61 @@ class TestStdioMCPTransport(AsyncTestCase):
 
         self.assertFalse(transport.connected)
 
-    async def test_disconnect(self):
+    async def _test_disconnect(self):
         """Test disconnection."""
         transport = StdioMCPTransport(self.config)
 
-        # Mock connected state
-        mock_process = AsyncMock()
-        mock_process.terminate = MagicMock()
-        mock_process.wait = AsyncMock(return_value=0)
-        transport.process = mock_process
+        # Mock connected state with new MCP SDK attributes
+        mock_exit_stack = AsyncMock()
+        mock_session = AsyncMock()
+        transport.exit_stack = mock_exit_stack
+        transport.session = mock_session
         transport.connected = True
 
         await transport.disconnect()
 
         self.assertFalse(transport.connected)
-        self.assertIsNone(transport.process)
-        mock_process.terminate.assert_called_once()
+        self.assertIsNone(transport.session)
+        mock_exit_stack.aclose.assert_called_once()
 
-    async def test_send_request(self):
+    async def _test_send_request(self):
         """Test sending requests."""
         transport = StdioMCPTransport(self.config)
 
-        # Mock connected state
+        # Mock connected state and session
         transport.connected = True
-        transport.process = AsyncMock()
-        transport.process.stdin = AsyncMock()
-        transport.process.stdout = AsyncMock()
+        mock_session = AsyncMock()
+        transport.session = mock_session
 
         # Mock response
-        response_data = {"jsonrpc": "2.0", "id": 1, "result": {"message": "success"}}
+        mock_result = AsyncMock()
+        mock_result.content = [{"type": "text", "text": "success"}]
+        mock_session.send_request.return_value = mock_result
 
-        with patch.object(transport, "_read_response", return_value=response_data):
-            result = await transport.send_request("test_method", {"param": "value"})
+        result = await transport.send_request("sampling/createMessage", {"messages": []})
 
-        self.assertEqual(result, {"message": "success"})
+        # The result should be the converted response
+        self.assertIsInstance(result, dict)
+        mock_session.send_request.assert_called_once()
 
-    async def test_send_request_not_connected(self):
+    async def _test_send_request_not_connected(self):
         """Test sending request when not connected."""
         transport = StdioMCPTransport(self.config)
 
-        with self.assertRaises(MCPConnectionError):
+        with self.assertRaises(RuntimeError):
             await transport.send_request("test_method", {})
 
-    async def test_send_notification(self):
+    async def _test_send_notification(self):
         """Test sending notifications."""
         transport = StdioMCPTransport(self.config)
         transport.connected = True
-        transport.process = AsyncMock()
-        transport.process.stdin = AsyncMock()
+        mock_session = AsyncMock()
+        transport.session = mock_session
 
         await transport.send_notification("test_notification", {"param": "value"})
 
         # Should not raise any exceptions
-        transport.process.stdin.write.assert_called()
+        mock_session.send_notification.assert_called_once()
 
     def test_context_manager(self):
         """Test async context manager."""
@@ -222,27 +217,27 @@ class TestStdioMCPTransport(AsyncTestCase):
 
     def test_connect_success_sync(self):
         """Test successful connection (sync wrapper)."""
-        self.run_async_test(self.test_connect_success)
+        self.run_async_test(self._test_connect_success)
 
     def test_connect_failure_sync(self):
         """Test connection failure (sync wrapper)."""
-        self.run_async_test(self.test_connect_failure)
+        self.run_async_test(self._test_connect_failure)
 
     def test_disconnect_sync(self):
         """Test disconnection (sync wrapper)."""
-        self.run_async_test(self.test_disconnect)
+        self.run_async_test(self._test_disconnect)
 
     def test_send_request_sync(self):
         """Test sending requests (sync wrapper)."""
-        self.run_async_test(self.test_send_request)
+        self.run_async_test(self._test_send_request)
 
     def test_send_request_not_connected_sync(self):
         """Test sending request when not connected (sync wrapper)."""
-        self.run_async_test(self.test_send_request_not_connected)
+        self.run_async_test(self._test_send_request_not_connected)
 
     def test_send_notification_sync(self):
         """Test sending notifications (sync wrapper)."""
-        self.run_async_test(self.test_send_notification)
+        self.run_async_test(self._test_send_notification)
 
 
 class TestHTTPMCPTransport(AsyncTestCase):
@@ -285,7 +280,7 @@ class TestHTTPMCPTransport(AsyncTestCase):
                 HTTPMCPTransport(config)
 
     @patch("httpx.AsyncClient")
-    async def test_connect_success(self, mock_client_class):
+    async def _test_connect_success(self, mock_client_class):
         """Test successful HTTP connection."""
         mock_client = AsyncMock()
         mock_client_class.return_value = mock_client
@@ -293,7 +288,8 @@ class TestHTTPMCPTransport(AsyncTestCase):
         # Mock initialization response
         mock_response = AsyncMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
+        mock_response.headers = {"content-type": "application/json"}
+        mock_response.json = AsyncMock(return_value={
             "jsonrpc": "2.0",
             "id": 1,
             "result": {
@@ -301,7 +297,7 @@ class TestHTTPMCPTransport(AsyncTestCase):
                 "capabilities": {"sampling": {}},
                 "serverInfo": {"name": "test-server", "version": "1.0.0"},
             },
-        }
+        })
         mock_client.post.return_value = mock_response
 
         transport = HTTPMCPTransport(self.config)
@@ -312,11 +308,11 @@ class TestHTTPMCPTransport(AsyncTestCase):
         self.assertIsNotNone(transport.client)
 
     @patch("httpx.AsyncClient")
-    async def test_connect_failure(self, mock_client_class):
+    async def _test_connect_failure(self, mock_client_class):
         """Test HTTP connection failure."""
         mock_client = AsyncMock()
         mock_client_class.return_value = mock_client
-        mock_client.post.side_effect = Exception("Connection failed")
+        mock_client.post.side_effect = httpx.ConnectError("Connection failed")
 
         transport = HTTPMCPTransport(self.config)
 
@@ -325,7 +321,7 @@ class TestHTTPMCPTransport(AsyncTestCase):
 
         self.assertFalse(transport.connected)
 
-    async def test_send_request(self):
+    async def _test_send_request(self):
         """Test sending HTTP requests."""
         transport = HTTPMCPTransport(self.config)
         transport.connected = True
@@ -334,6 +330,7 @@ class TestHTTPMCPTransport(AsyncTestCase):
         # Mock response
         mock_response = AsyncMock()
         mock_response.status_code = 200
+        mock_response.headers = {"content-type": "application/json"}
         mock_response.json.return_value = {
             "jsonrpc": "2.0",
             "id": 1,
@@ -346,7 +343,7 @@ class TestHTTPMCPTransport(AsyncTestCase):
         self.assertEqual(result, {"message": "success"})
         transport.client.post.assert_called_once()
 
-    async def test_send_request_error_response(self):
+    async def _test_send_request_error_response(self):
         """Test handling error responses."""
         transport = HTTPMCPTransport(self.config)
         transport.connected = True
@@ -355,6 +352,7 @@ class TestHTTPMCPTransport(AsyncTestCase):
         # Mock error response
         mock_response = AsyncMock()
         mock_response.status_code = 500
+        mock_response.headers = {"content-type": "text/plain"}
         mock_response.text = "Internal Server Error"
         transport.client.post.return_value = mock_response
 
@@ -367,19 +365,19 @@ class TestHTTPMCPTransport(AsyncTestCase):
 
     def test_connect_success_sync(self):
         """Test successful HTTP connection (sync wrapper)."""
-        self.run_async_test(self.test_connect_success)
+        self.run_async_test(self._test_connect_success)
 
     def test_connect_failure_sync(self):
         """Test HTTP connection failure (sync wrapper)."""
-        self.run_async_test(self.test_connect_failure)
+        self.run_async_test(self._test_connect_failure)
 
     def test_send_request_sync(self):
         """Test sending HTTP requests (sync wrapper)."""
-        self.run_async_test(self.test_send_request)
+        self.run_async_test(self._test_send_request)
 
     def test_send_request_error_response_sync(self):
         """Test handling error responses (sync wrapper)."""
-        self.run_async_test(self.test_send_request_error_response)
+        self.run_async_test(self._test_send_request_error_response)
 
 
 class TestTransportFactory(unittest.TestCase):

@@ -67,7 +67,11 @@
       "examples": [
         {
           "input": {
-            "thoughts": ["Use binary search", "Use linear search", "Use hash table"],
+            "thoughts": [
+              "Use binary search",
+              "Use linear search",
+              "Use hash table"
+            ],
             "criteria": "time complexity and space efficiency"
           },
           "output": "Ranked approaches with scores based on algorithmic efficiency"
@@ -95,7 +99,10 @@
       "examples": [
         {
           "input": {
-            "results": ["Solution A: Fast but memory-intensive", "Solution B: Slow but memory-efficient"],
+            "results": [
+              "Solution A: Fast but memory-intensive",
+              "Solution B: Slow but memory-efficient"
+            ],
             "aggregation_method": "synthesis"
           },
           "output": "Hybrid solution balancing speed and memory usage"
@@ -143,12 +150,20 @@
     "analyze-problem": {
       "description": "Structured problem analysis using Graph of Thoughts methodology",
       "category": "analysis",
-      "use_cases": ["complex problem solving", "systematic analysis", "decision making"]
+      "use_cases": [
+        "complex problem solving",
+        "systematic analysis",
+        "decision making"
+      ]
     },
     "generate-solutions": {
       "description": "Generate multiple solution approaches with different perspectives",
       "category": "generation",
-      "use_cases": ["brainstorming", "solution exploration", "creative problem solving"]
+      "use_cases": [
+        "brainstorming",
+        "solution exploration",
+        "creative problem solving"
+      ]
     },
     "evaluate-options": {
       "description": "Systematic evaluation of different solution options",
@@ -157,11 +172,12 @@
     }
   },
   "integration": {
+    "_note": "Replace PYTHON_EXECUTABLE_PATH with your actual Python executable path. Use 'python -c \"import sys; print(sys.executable)\"' to find it.",
     "claude_desktop": {
       "config_example": {
         "mcpServers": {
           "graph-of-thoughts": {
-            "command": "python",
+            "command": "PYTHON_EXECUTABLE_PATH",
             "args": ["-m", "graph_of_thoughts"],
             "env": {},
             "autoApprove": [
@@ -174,13 +190,14 @@
             ]
           }
         }
-      }
+      },
+      "notes": "Replace PYTHON_EXECUTABLE_PATH with your actual Python path (e.g., 'C:\\Program Files\\Anaconda3\\python.exe' on Windows)"
     },
     "vscode": {
       "config_example": {
         "mcp.servers": {
           "graph-of-thoughts": {
-            "command": "python",
+            "command": "PYTHON_EXECUTABLE_PATH",
             "args": ["-m", "graph_of_thoughts"],
             "cwd": "${workspaceFolder}",
             "autoApprove": [
@@ -193,14 +210,15 @@
             ]
           }
         }
-      }
+      },
+      "notes": "Replace PYTHON_EXECUTABLE_PATH with your actual Python path"
     },
     "cursor": {
       "config_example": {
         "mcp": {
           "servers": {
             "graph-of-thoughts": {
-              "command": "python -m graph_of_thoughts",
+              "command": "PYTHON_EXECUTABLE_PATH -m graph_of_thoughts",
               "autoApprove": [
                 "break_down_task",
                 "generate_thoughts",
@@ -210,6 +228,57 @@
                 "create_reasoning_chain"
               ]
             }
+          }
+        }
+      },
+      "notes": "Replace PYTHON_EXECUTABLE_PATH with your actual Python path (quote if it contains spaces)"
+    },
+    "augment_code": {
+      "config_example": {
+        "augment.mcp.servers": {
+          "graph-of-thoughts": {
+            "command": "PYTHON_EXECUTABLE_PATH",
+            "args": ["-m", "graph_of_thoughts"],
+            "description": "Graph of Thoughts reasoning server",
+            "autoApprove": [
+              "break_down_task",
+              "generate_thoughts",
+              "score_thoughts",
+              "validate_and_improve",
+              "aggregate_results",
+              "create_reasoning_chain"
+            ]
+          }
+        }
+      },
+      "jetbrains_config": {
+        "name": "graph-of-thoughts",
+        "command": "PYTHON_EXECUTABLE_PATH",
+        "arguments": "-m graph_of_thoughts",
+        "description": "Graph of Thoughts reasoning server"
+      },
+      "config_file_example": {
+        "servers": {
+          "graph-of-thoughts": {
+            "transport": {
+              "type": "stdio",
+              "command": "PYTHON_EXECUTABLE_PATH",
+              "args": ["-m", "graph_of_thoughts"]
+            },
+            "capabilities": {
+              "tools": true,
+              "resources": true,
+              "prompts": true
+            },
+            "autoApprove": [
+              "break_down_task",
+              "generate_thoughts",
+              "score_thoughts",
+              "validate_and_improve",
+              "aggregate_results",
+              "create_reasoning_chain"
+            ],
+            "description": "Advanced reasoning workflows using Graph of Thoughts methodology"
           }
         }
       }

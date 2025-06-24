@@ -112,7 +112,7 @@ class TestMCPIntegration(AsyncTestCase):
             json.dump(config, f, indent=2)
             return f.name
 
-    async def test_mcp_language_model_initialization(self):
+    async def _test_mcp_language_model_initialization(self):
         """Test MCPLanguageModel initialization with different configs."""
         config_file = self.create_temp_config("mock_stdio")
 
@@ -133,7 +133,7 @@ class TestMCPIntegration(AsyncTestCase):
         finally:
             os.unlink(config_file)
 
-    async def test_transport_creation_stdio(self):
+    async def _test_transport_creation_stdio(self):
         """Test stdio transport creation."""
         config = self.test_configs["mock_stdio"]
 
@@ -142,7 +142,7 @@ class TestMCPIntegration(AsyncTestCase):
         self.assertIsNotNone(transport)
         self.assertEqual(transport.command, "echo")
 
-    async def test_transport_creation_http(self):
+    async def _test_transport_creation_http(self):
         """Test HTTP transport creation."""
         config = self.test_configs["mock_http"]
 
@@ -150,7 +150,7 @@ class TestMCPIntegration(AsyncTestCase):
         self.assertIsNotNone(transport)
         self.assertEqual(transport.base_url, "http://localhost:8000/mcp")
 
-    async def test_mocked_query_flow(self):
+    async def _test_mocked_query_flow(self):
         """Test complete query flow with mocked transport."""
         config_file = self.create_temp_config("mock_stdio")
 
@@ -177,10 +177,14 @@ class TestMCPIntegration(AsyncTestCase):
                 # Test query
                 response = await lm.query_async("Test query")
 
-                # Verify response
-                self.assertIsInstance(response, list)
-                self.assertEqual(len(response), 1)
-                self.assertIn("test response", response[0])
+                # Verify response format (should be MCP response format)
+                self.assertIsInstance(response, dict)
+                self.assertIn("content", response)
+
+                # Extract text using the proper API
+                texts = lm.get_response_texts(response)
+                self.assertEqual(len(texts), 1)
+                self.assertIn("test response", texts[0])
 
                 # Verify transport calls
                 mock_transport.connect.assert_called_once()
@@ -189,7 +193,7 @@ class TestMCPIntegration(AsyncTestCase):
         finally:
             os.unlink(config_file)
 
-    async def test_error_handling_connection_failure(self):
+    async def _test_error_handling_connection_failure(self):
         """Test error handling for connection failures."""
         config_file = self.create_temp_config("mock_stdio")
 
@@ -213,7 +217,7 @@ class TestMCPIntegration(AsyncTestCase):
         finally:
             os.unlink(config_file)
 
-    async def test_error_handling_timeout(self):
+    async def _test_error_handling_timeout(self):
         """Test error handling for timeouts."""
         config_file = self.create_temp_config("mock_stdio")
 
@@ -238,7 +242,7 @@ class TestMCPIntegration(AsyncTestCase):
         finally:
             os.unlink(config_file)
 
-    async def test_batch_processing_integration(self):
+    async def _test_batch_processing_integration(self):
         """Test batch processing integration."""
         config_file = self.create_temp_config("mock_stdio")
 
@@ -267,7 +271,9 @@ class TestMCPIntegration(AsyncTestCase):
                 results = []
                 for query in queries:
                     response = await lm.query_async(query)
-                    results.extend(response)
+                    # Extract text using the proper API
+                    texts = lm.get_response_texts(response)
+                    results.extend(texts)
 
                 # Verify all responses received
                 self.assertEqual(len(results), 3)
@@ -277,7 +283,7 @@ class TestMCPIntegration(AsyncTestCase):
         finally:
             os.unlink(config_file)
 
-    async def test_context_manager_integration(self):
+    async def _test_context_manager_integration(self):
         """Test async context manager integration."""
         config_file = self.create_temp_config("mock_stdio")
 
@@ -298,8 +304,12 @@ class TestMCPIntegration(AsyncTestCase):
                     config_path=config_file, model_name="mock_stdio"
                 ) as lm:
                     response = await lm.query_async("Test query")
-                    self.assertIsInstance(response, list)
-                    self.assertEqual(len(response), 1)
+                    self.assertIsInstance(response, dict)
+                    self.assertIn("content", response)
+
+                    # Extract text using the proper API
+                    texts = lm.get_response_texts(response)
+                    self.assertEqual(len(texts), 1)
 
                 # Verify cleanup was called
                 mock_transport.disconnect.assert_called_once()
@@ -332,35 +342,35 @@ class TestMCPIntegration(AsyncTestCase):
     # Sync wrappers for async tests
     def test_mcp_language_model_initialization_sync(self):
         """Test MCPLanguageModel initialization (sync wrapper)."""
-        self.run_async_test(self.test_mcp_language_model_initialization)
+        self.run_async_test(self._test_mcp_language_model_initialization)
 
     def test_transport_creation_stdio_sync(self):
         """Test stdio transport creation (sync wrapper)."""
-        self.run_async_test(self.test_transport_creation_stdio)
+        self.run_async_test(self._test_transport_creation_stdio)
 
     def test_transport_creation_http_sync(self):
         """Test HTTP transport creation (sync wrapper)."""
-        self.run_async_test(self.test_transport_creation_http)
+        self.run_async_test(self._test_transport_creation_http)
 
     def test_mocked_query_flow_sync(self):
         """Test complete query flow (sync wrapper)."""
-        self.run_async_test(self.test_mocked_query_flow)
+        self.run_async_test(self._test_mocked_query_flow)
 
     def test_error_handling_connection_failure_sync(self):
         """Test connection failure handling (sync wrapper)."""
-        self.run_async_test(self.test_error_handling_connection_failure)
+        self.run_async_test(self._test_error_handling_connection_failure)
 
     def test_error_handling_timeout_sync(self):
         """Test timeout handling (sync wrapper)."""
-        self.run_async_test(self.test_error_handling_timeout)
+        self.run_async_test(self._test_error_handling_timeout)
 
     def test_batch_processing_integration_sync(self):
         """Test batch processing integration (sync wrapper)."""
-        self.run_async_test(self.test_batch_processing_integration)
+        self.run_async_test(self._test_batch_processing_integration)
 
     def test_context_manager_integration_sync(self):
         """Test context manager integration (sync wrapper)."""
-        self.run_async_test(self.test_context_manager_integration)
+        self.run_async_test(self._test_context_manager_integration)
 
 
 @unittest.skipUnless(
@@ -381,7 +391,7 @@ class TestRealMCPIntegration(AsyncTestCase):
         if not self.config_file or not Path(self.config_file).exists():
             self.skipTest("Real MCP integration tests require valid MCP_CONFIG_FILE")
 
-    async def test_real_mcp_query(self):
+    async def _test_real_mcp_query(self):
         """Test query with real MCP server."""
         lm = MCPLanguageModel(config_path=self.config_file, model_name=self.model_name)
 
@@ -398,7 +408,7 @@ class TestRealMCPIntegration(AsyncTestCase):
 
     def test_real_mcp_query_sync(self):
         """Test real MCP query (sync wrapper)."""
-        self.run_async_test(self.test_real_mcp_query)
+        self.run_async_test(self._test_real_mcp_query)
 
 
 if __name__ == "__main__":

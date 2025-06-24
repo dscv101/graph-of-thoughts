@@ -130,6 +130,7 @@ Performance Considerations:
 # Standard library imports
 import asyncio
 import concurrent.futures
+import logging
 import random
 import time
 from dataclasses import dataclass
@@ -454,16 +455,19 @@ class MCPLanguageModel(AbstractLanguageModel):
         config_path: str = "",
         model_name: str = "mcp_claude_desktop",
         cache: bool = False,
+        config: dict[str, Any] | None = None,
     ) -> None:
         """
         Initialize the MCPLanguageModel instance with configuration, model details, and caching options.
 
-        :param config_path: Path to the configuration file. Defaults to "".
+        :param config_path: Path to the configuration file. Defaults to "". Ignored if config is provided.
         :type config_path: str
         :param model_name: Name of the model configuration, default is 'mcp_claude_desktop'. Used to select the correct configuration.
         :type model_name: str
         :param cache: Flag to determine whether to cache responses. Defaults to False.
         :type cache: bool
+        :param config: Configuration dictionary. If provided, config_path is ignored.
+        :type config: dict[str, Any] | None
         """
         # Initialize cache configuration from model config if available
         cache_config = None
@@ -474,7 +478,35 @@ class MCPLanguageModel(AbstractLanguageModel):
                 CacheConfig()
             )  # Use defaults, will be overridden if config specifies
 
-        super().__init__(config_path, model_name, cache, cache_config)
+        # Handle config parameter - if provided, use it directly instead of loading from file
+        if config is not None:
+            # Initialize parent class manually to avoid file loading
+            self.logger: logging.Logger = logging.getLogger(self.__class__.__name__)
+            self.config: dict[str, Any] = config
+            self.model_name: str = model_name
+            self.cache: bool = cache
+            self.config_path: str = config_path
+
+            # Initialize intelligent caching system
+            if self.cache:
+                from .caching import get_cache_manager
+                self.cache_manager = get_cache_manager(cache_config)
+                # Keep legacy cache for backward compatibility
+                self.response_cache: "dict[str, list[Any]]" = {}
+            else:
+                self.cache_manager = None
+
+            # Initialize cost tracking attributes
+            self.prompt_tokens: int = 0
+            self.completion_tokens: int = 0
+            self.cost: float = 0.0
+        else:
+            # Use traditional file-based config loading
+            super().__init__(config_path, model_name, cache, cache_config)
+
+        # Extract model-specific configuration
+        if model_name not in self.config:
+            raise ValueError(f"Model '{model_name}' not found in configuration")
         self.config: dict[str, Any] = self.config[model_name]
 
         # Migrate old configuration format to new format if needed
@@ -751,7 +783,7 @@ class MCPLanguageModel(AbstractLanguageModel):
                 self.logger.error(f"Error during disconnect: {e}")
 
     def _create_sampling_request(
-        self, query: str, num_responses: int = 1
+        self, query: str, num_responses: int = 1, **kwargs
     ) -> dict[str, Any]:
         """
         Create a properly formatted MCP sampling request following the specification.
@@ -760,21 +792,56 @@ class MCPLanguageModel(AbstractLanguageModel):
         :type query: str
         :param num_responses: Number of desired responses, default is 1.
         :type num_responses: int
+        :param kwargs: Additional parameters (temperature, max_tokens, etc.)
         :return: The sampling request
         :rtype: dict[str, Any]
         """
         # Create messages in MCP format
         messages = [{"role": "user", "content": {"type": "text", "text": query}}]
 
+        # Merge default params with kwargs, giving priority to kwargs
+        params = {
+            "model_preferences": self.default_sampling_params.get("modelPreferences"),
+            "system_prompt": self.default_sampling_params.get("systemPrompt"),
+            "include_context": self.default_sampling_params.get("includeContext", "none"),
+            "temperature": self.default_sampling_params.get("temperature"),
+            "max_tokens": self.default_sampling_params.get("maxTokens", 1000),
+            "stop_sequences": self.default_sampling_params.get("stopSequences"),
+        }
+
+        # Override with kwargs, handling parameter name mapping
+        if "temperature" in kwargs:
+            params["temperature"] = kwargs["temperature"]
+        if "max_tokens" in kwargs:
+            params["max_tokens"] = kwargs["max_tokens"]
+        if "maxTokens" in kwargs:
+            params["max_tokens"] = kwargs["maxTokens"]
+        if "stop_sequences" in kwargs:
+            params["stop_sequences"] = kwargs["stop_sequences"]
+        if "stopSequences" in kwargs:
+            params["stop_sequences"] = kwargs["stopSequences"]
+        if "system_prompt" in kwargs:
+            params["system_prompt"] = kwargs["system_prompt"]
+        if "systemPrompt" in kwargs:
+            params["system_prompt"] = kwargs["systemPrompt"]
+        if "model_preferences" in kwargs:
+            params["model_preferences"] = kwargs["model_preferences"]
+        if "modelPreferences" in kwargs:
+            params["model_preferences"] = kwargs["modelPreferences"]
+        if "include_context" in kwargs:
+            params["include_context"] = kwargs["include_context"]
+        if "includeContext" in kwargs:
+            params["include_context"] = kwargs["includeContext"]
+
         # Use the protocol utility to create the request
         return create_sampling_request(
             messages=messages,
-            model_preferences=self.default_sampling_params.get("modelPreferences"),
-            system_prompt=self.default_sampling_params.get("systemPrompt"),
-            include_context=self.default_sampling_params.get("includeContext", "none"),
-            temperature=self.default_sampling_params.get("temperature"),
-            max_tokens=self.default_sampling_params.get("maxTokens", 1000),
-            stop_sequences=self.default_sampling_params.get("stopSequences"),
+            model_preferences=params["model_preferences"],
+            system_prompt=params["system_prompt"],
+            include_context=params["include_context"],
+            temperature=params["temperature"],
+            max_tokens=params["max_tokens"],
+            stop_sequences=params["stop_sequences"],
             metadata={
                 "num_responses": num_responses,
                 "source": "graph_of_thoughts",
@@ -998,8 +1065,27 @@ class MCPLanguageModel(AbstractLanguageModel):
                 # Re-raise the error about being in async context
                 raise
 
+    async def query_async(
+        self, query: str, num_responses: int = 1, **kwargs
+    ) -> dict | list[dict]:
+        """
+        Public async interface for querying the MCP host.
+
+        This method provides the async functionality for querying the MCP host.
+        It handles connection management, request formatting, and response processing.
+
+        :param query: The query to be posed to the language model.
+        :type query: str
+        :param num_responses: Number of desired responses, default is 1.
+        :type num_responses: int
+        :param kwargs: Additional parameters (temperature, max_tokens, etc.)
+        :return: Response(s) from the MCP host. Single dict if num_responses=1, list of dicts otherwise.
+        :rtype: dict | list[dict]
+        """
+        return await self._query_async(query, num_responses, **kwargs)
+
     async def _query_async(
-        self, query: str, num_responses: int = 1
+        self, query: str, num_responses: int = 1, **kwargs
     ) -> dict | list[dict]:
         """
         Async implementation of query.
@@ -1008,10 +1094,11 @@ class MCPLanguageModel(AbstractLanguageModel):
         :type query: str
         :param num_responses: Number of desired responses, default is 1.
         :type num_responses: int
+        :param kwargs: Additional parameters (temperature, max_tokens, etc.)
         :return: Response(s) from the MCP host.
         :rtype: dict | list[dict]
         """
-        request = self._create_sampling_request(query, num_responses)
+        request = self._create_sampling_request(query, num_responses, **kwargs)
 
         if num_responses == 1:
             response = await self._send_sampling_request(request)
@@ -1019,7 +1106,8 @@ class MCPLanguageModel(AbstractLanguageModel):
             return response
         else:
             # For multiple responses, use concurrent batch processing
-            return await self.query_batch([query] * num_responses)
+            # Pass kwargs to each query in the batch
+            return await self.query_batch([query] * num_responses, **kwargs)
 
     async def query_batch(
         self,
@@ -1028,6 +1116,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         batch_size: int | None = None,
         retry_attempts: int | None = None,
         retry_delay: float | None = None,
+        **kwargs
     ) -> list[dict[str, Any]]:
         """
         Process multiple queries concurrently with batch processing optimizations.
@@ -1070,10 +1159,7 @@ class MCPLanguageModel(AbstractLanguageModel):
                     print(f"Response {i+1}: {response}")
             ```
         """
-        if not self._connected:
-            raise ConnectionError(
-                "Not connected to MCP server. Use async context manager or call connect()."
-            )
+        # Connection will be established automatically by _send_sampling_request
 
         if not queries:
             raise ValueError("queries list cannot be empty")
@@ -1102,7 +1188,7 @@ class MCPLanguageModel(AbstractLanguageModel):
             # Create tasks for concurrent processing
             tasks = [
                 self._process_single_query_with_retry(
-                    query, semaphore, retry_attempts, retry_delay
+                    query, semaphore, retry_attempts, retry_delay, **kwargs
                 )
                 for query in batch_queries
             ]
@@ -1135,6 +1221,7 @@ class MCPLanguageModel(AbstractLanguageModel):
         semaphore: asyncio.Semaphore,
         retry_attempts: int,
         retry_delay: float,
+        **kwargs
     ) -> [str, Any]:
         """
         Process a single query with advanced retry logic and concurrency control.
@@ -1170,7 +1257,7 @@ class MCPLanguageModel(AbstractLanguageModel):
 
             for attempt in range(retry_attempts):
                 try:
-                    request = self._create_sampling_request(query, 1)
+                    request = self._create_sampling_request(query, 1, **kwargs)
                     response = await self._send_sampling_request(request)
                     self._update_token_usage(response, prompt_text=query)
 
@@ -1334,7 +1421,26 @@ class MCPLanguageModel(AbstractLanguageModel):
             try:
                 # Handle MCP response format
                 content = response.get("content", {})
-                if isinstance(content, dict):
+
+                # Handle both single content dict and list of content items
+                if isinstance(content, list):
+                    # Content is a list of items
+                    for item in content:
+                        if isinstance(item, dict):
+                            if item.get("type") == "text":
+                                text = item.get("text", "")
+                                texts.append(text)
+                            elif item.get("type") == "image":
+                                # For image content, return a description
+                                mime_type = item.get("mimeType", "unknown")
+                                texts.append(f"[Image content: {mime_type}]")
+                            else:
+                                # Unknown content type
+                                texts.append(
+                                    f"[Unknown content type: {item.get('type', 'none')}]"
+                                )
+                elif isinstance(content, dict):
+                    # Content is a single item
                     if content.get("type") == "text":
                         text = content.get("text", "")
                         texts.append(text)
@@ -1394,6 +1500,34 @@ class MCPLanguageModel(AbstractLanguageModel):
         if hasattr(self.transport, "is_circuit_healthy"):
             return self.transport.is_circuit_healthy()
         return True  # Assume healthy if no circuit breaker
+
+    def _calculate_cost(self, prompt_tokens: int, response_tokens: int) -> float:
+        """
+        Calculate the cost of a request based on token usage.
+
+        :param prompt_tokens: Number of prompt tokens
+        :type prompt_tokens: int
+        :param response_tokens: Number of response tokens
+        :type response_tokens: int
+        :return: Estimated cost in dollars
+        :rtype: float
+        """
+        prompt_cost = (prompt_tokens / 1000.0) * self.prompt_token_cost
+        response_cost = (response_tokens / 1000.0) * self.response_token_cost
+        return prompt_cost + response_cost
+
+    def _estimate_tokens(self, text: str, context: str = "general") -> int:
+        """
+        Estimate the number of tokens in the given text.
+
+        :param text: The text to analyze
+        :type text: str
+        :param context: Context hint for better estimation ("general", "code", "prompt", "response")
+        :type context: str
+        :return: Estimated number of tokens
+        :rtype: int
+        """
+        return self.token_estimator.estimate_tokens(text, context)
 
     def get_metrics(self) -> dict[str, Any] | None:
         """

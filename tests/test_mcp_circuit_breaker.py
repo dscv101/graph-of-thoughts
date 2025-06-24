@@ -119,7 +119,7 @@ class TestMCPCircuitBreaker(AsyncTestCase):
         self.assertFalse(self.circuit_breaker.is_open())
         self.assertFalse(self.circuit_breaker.is_half_open())
 
-    async def test_successful_operation(self):
+    async def _test_successful_operation(self):
         """Test successful operation through circuit breaker."""
 
         async def successful_operation():
@@ -134,7 +134,7 @@ class TestMCPCircuitBreaker(AsyncTestCase):
         self.assertEqual(metrics.failed_requests, 0)
         self.assertEqual(metrics.total_requests, 1)
 
-    async def test_failed_operation(self):
+    async def _test_failed_operation(self):
         """Test failed operation through circuit breaker."""
 
         async def failing_operation():
@@ -149,7 +149,7 @@ class TestMCPCircuitBreaker(AsyncTestCase):
         self.assertEqual(metrics.failed_requests, 1)
         self.assertEqual(metrics.total_requests, 1)
 
-    async def test_circuit_opening(self):
+    async def _test_circuit_opening(self):
         """Test circuit breaker opening after failures."""
 
         async def failing_operation():
@@ -169,7 +169,7 @@ class TestMCPCircuitBreaker(AsyncTestCase):
             async with self.circuit_breaker:
                 await failing_operation()
 
-    async def test_recovery_timeout(self):
+    async def _test_recovery_timeout(self):
         """Test circuit breaker recovery after timeout."""
 
         async def failing_operation():
@@ -193,7 +193,7 @@ class TestMCPCircuitBreaker(AsyncTestCase):
 
         self.assertTrue(self.circuit_breaker.is_open())  # Should re-open after failure
 
-    async def test_half_open_recovery(self):
+    async def _test_half_open_recovery(self):
         """Test successful recovery through half-open state."""
         call_count = 0
 
@@ -224,7 +224,7 @@ class TestMCPCircuitBreaker(AsyncTestCase):
         # Circuit should be closed now
         self.assertTrue(self.circuit_breaker.is_closed())
 
-    async def test_call_method(self):
+    async def _test_call_method(self):
         """Test the call method."""
 
         async def test_operation(value):
@@ -233,12 +233,13 @@ class TestMCPCircuitBreaker(AsyncTestCase):
         result = await self.circuit_breaker.call(test_operation, "test")
         self.assertEqual(result, "result: test")
 
-    async def test_protect_context_manager(self):
+    async def _test_protect_context_manager(self):
         """Test the protect context manager."""
 
         async def test_operation():
             return "protected result"
 
+        # The protect method is an async context manager that yields the result
         async with self.circuit_breaker.protect(test_operation) as result:
             self.assertEqual(result, "protected result")
 
@@ -263,31 +264,31 @@ class TestMCPCircuitBreaker(AsyncTestCase):
 
     def test_successful_operation_sync(self):
         """Test successful operation (sync wrapper)."""
-        self.run_async_test(self.test_successful_operation)
+        self.run_async_test(self._test_successful_operation)
 
     def test_failed_operation_sync(self):
         """Test failed operation (sync wrapper)."""
-        self.run_async_test(self.test_failed_operation)
+        self.run_async_test(self._test_failed_operation)
 
     def test_circuit_opening_sync(self):
         """Test circuit opening (sync wrapper)."""
-        self.run_async_test(self.test_circuit_opening)
+        self.run_async_test(self._test_circuit_opening)
 
     def test_recovery_timeout_sync(self):
         """Test recovery timeout (sync wrapper)."""
-        self.run_async_test(self.test_recovery_timeout)
+        self.run_async_test(self._test_recovery_timeout)
 
     def test_half_open_recovery_sync(self):
         """Test half-open recovery (sync wrapper)."""
-        self.run_async_test(self.test_half_open_recovery)
+        self.run_async_test(self._test_half_open_recovery)
 
     def test_call_method_sync(self):
         """Test call method (sync wrapper)."""
-        self.run_async_test(self.test_call_method)
+        self.run_async_test(self._test_call_method)
 
     def test_protect_context_manager_sync(self):
         """Test protect context manager (sync wrapper)."""
-        self.run_async_test(self.test_protect_context_manager)
+        self.run_async_test(self._test_protect_context_manager)
 
 
 class TestCircuitBreakerConfig(unittest.TestCase):
@@ -337,7 +338,7 @@ class TestCircuitBreakerTransportWrapper(AsyncTestCase):
             self.mock_transport, self.circuit_breaker
         )
 
-    async def test_successful_request(self):
+    async def _test_successful_request(self):
         """Test successful request through wrapper."""
         self.mock_transport.send_request.return_value = {"result": "success"}
 
@@ -348,7 +349,7 @@ class TestCircuitBreakerTransportWrapper(AsyncTestCase):
             "test_method", {"param": "value"}
         )
 
-    async def test_failed_request(self):
+    async def _test_failed_request(self):
         """Test failed request through wrapper."""
         self.mock_transport.send_request.side_effect = ValueError("Connection failed")
 
@@ -359,7 +360,7 @@ class TestCircuitBreakerTransportWrapper(AsyncTestCase):
         metrics = self.wrapper.get_circuit_breaker_metrics()
         self.assertEqual(metrics.failed_requests, 1)
 
-    async def test_circuit_protection(self):
+    async def _test_circuit_protection(self):
         """Test circuit breaker protection in wrapper."""
         # Cause failures to open circuit
         self.mock_transport.send_request.side_effect = ValueError("Service down")
@@ -398,15 +399,15 @@ class TestCircuitBreakerTransportWrapper(AsyncTestCase):
 
     def test_successful_request_sync(self):
         """Test successful request (sync wrapper)."""
-        self.run_async_test(self.test_successful_request)
+        self.run_async_test(self._test_successful_request)
 
     def test_failed_request_sync(self):
         """Test failed request (sync wrapper)."""
-        self.run_async_test(self.test_failed_request)
+        self.run_async_test(self._test_failed_request)
 
     def test_circuit_protection_sync(self):
         """Test circuit protection (sync wrapper)."""
-        self.run_async_test(self.test_circuit_protection)
+        self.run_async_test(self._test_circuit_protection)
 
 
 if __name__ == "__main__":
